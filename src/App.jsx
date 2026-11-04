@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, FileSpreadsheet, FileJson, FileText, Upload, Archive, Filter, Menu, Moon, Sun, UserRound, Eye, TriangleAlert, X, ArrowLeft, Search, Cloud, CloudOff, RefreshCw,
 } from 'lucide-react'
-import { BANCA, addDays, buildFreq, fmtFull, suggestFrom, totalsByCur } from './lib/logic'
+import { BANCA, addDays, buildFreq, canonicalTeam, fmtFull, suggestFrom, suggestMany, totalsByCur } from './lib/logic'
 import { MAX_HISTORY, useStore } from './lib/useStore'
 import { useCloud } from './lib/useCloud'
 import { useAuth } from './lib/useAuth'
@@ -75,8 +75,10 @@ export default function App() {
   const pct = fees?.[active] || 0
 
   // Memoria de nombres de eventos (semana actual + semanas cerradas)
-  const freq = useMemo(() => buildFreq([{ bets: s.state.bets }, ...history]), [s.state.bets, history])
+  const freq = useMemo(() => buildFreq([{ bets: s.state.bets }, ...history], s.state.teams), [s.state.bets, s.state.teams, history])
   const suggest = (typed) => suggestFrom(freq, typed)
+  const suggestAll = (typed) => suggestMany(freq, typed, 3)
+  const canon = (typed) => canonicalTeam(freq, typed)
 
   // Todas las semanas (actual + cerradas) para la búsqueda por equipo
   const weeks = useMemo(
@@ -137,7 +139,7 @@ export default function App() {
         history={history} notice={notice} onDismissNotice={s.dismissNotice} onExport={exportXLSX}
       />
 
-      <div className="wide:sticky wide:top-0 z-30 bg-bg/90 backdrop-blur">
+      <div data-sticky-header className="wide:sticky wide:top-0 z-30 bg-bg/90 backdrop-blur">
       <div className="max-w-[1600px] mx-auto px-3 pt-3 pb-2 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
@@ -201,6 +203,7 @@ export default function App() {
             <Filter size={14} /> Verificar pendientes ({pendingCount})
           </button>
           <FeeInput value={pct} disabled={!canEdit} onCommit={(n) => s.setFee(active, n)} />
+          <span className="hidden xl:inline text-[11px] text-muted" title="Atajos del teclado">⌨ ↑ ↓ moverte · Enter editar · Esc soltar</span>
           <span className="ml-auto hidden lg:flex items-center gap-3 text-[11px] font-semibold text-muted">
             <span className="flex items-center gap-1"><i className="inline-block w-2.5 h-2.5 rounded-full bg-win" /> Ganancia de {BANCA} (el cliente pierde)</span>
             <span className="flex items-center gap-1"><i className="inline-block w-2.5 h-2.5 rounded-full bg-loss" /> Pago de {BANCA} (el cliente gana)</span>
@@ -212,6 +215,7 @@ export default function App() {
       <div className="max-w-[1600px] mx-auto px-3 pb-10">
       <BetTable
         bets={shown} weekStart={weekStart} pct={pct} canEdit={canEdit} suggest={suggest}
+        enabled={!modal && !comboId && !confirm && !menu && !searchQuery}
         onEdit={(id, patch) => s.edit(active, id, patch)}
         onOpenEdit={(bet) => setModal({ bet })}
         onSearchTeam={searchTeam}
@@ -243,9 +247,9 @@ export default function App() {
       )}
       {modal && (
         <BetModal
-          bet={modal.bet} initialDate={modal.date} suggest={suggest}
+          bet={modal.bet} initialDate={modal.date} suggestAll={suggestAll} canon={canon}
           onClose={() => setModal(null)}
-          onSave={(b) => { modal.bet ? s.edit(active, modal.bet.id, b) : s.add(active, b); setModal(null) }}
+          onSave={(b, opts) => { modal.bet ? s.edit(active, modal.bet.id, b) : s.add(active, b); if (!opts?.again) setModal(null) }}
         />
       )}
       {confirm?.type === 'week' && (

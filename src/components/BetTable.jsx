@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
   BANCA, CURRENCIES, DAYS, addDays, balanceOf, dayFromDate, fmtDate, fmtFull, houseNet, isCombo, money, parseOdds, payout, selections, shortcutOf, toAmount, totals,
@@ -46,12 +46,12 @@ function Field({ label, children, tone = '' }) {
 }
 
 // Vista en tarjetas: se usa en split-screen y en el celular (sin scroll horizontal)
-function BetCard({ b, canEdit, onEdit, onOpenEdit, onDelete, onSearchTeam, onShowCombo }) {
+function BetCard({ b, canEdit, selected, onSelect, onEdit, onOpenEdit, onDelete, onSearchTeam, onShowCombo }) {
   const cur = b.moneda || 'ARS'
   const combo = isCombo(b)
   const legs = selections(b)
   return (
-    <article className="bento p-3 space-y-2.5">
+    <article data-nav={`bet:${b.id}`} onClick={onSelect} className={`bento p-3 space-y-2.5 ${selected ? '!border-cyan ring-2 ring-cyan/60 bg-cyan/5' : ''}`}>
       <div className="flex items-center gap-1.5">
         <span className={`pill ${cur === 'ARS' ? 'pill-cyan' : 'pill-gold'}`}>{cur}</span>
         <span className={`pill ${combo ? 'pill-cyan' : 'pill-mute'}`}>{combo ? 'COMBINADA' : 'SIMPLE'}</span>
@@ -85,7 +85,7 @@ function BetCard({ b, canEdit, onEdit, onOpenEdit, onDelete, onSearchTeam, onSho
   )
 }
 
-function BetCards({ bets, weekStart, pct, canEdit, onEdit, onOpenEdit, onDelete, onAdd, onSearchTeam, onShowCombo }) {
+function BetCards({ bets, weekStart, pct, canEdit, sel, setSel, onEdit, onOpenEdit, onDelete, onAdd, onSearchTeam, onShowCombo }) {
   return (
     <div className="wide:hidden space-y-4">
       {DAYS.map((d, i) => {
@@ -100,12 +100,12 @@ function BetCards({ bets, weekStart, pct, canEdit, onEdit, onOpenEdit, onDelete,
             {list.length > 0 && (
               <div className="grid gap-2 md:grid-cols-2">
                 {list.map((b) => (
-                  <BetCard key={b.id} b={b} canEdit={canEdit} onEdit={onEdit} onOpenEdit={onOpenEdit} onDelete={onDelete} onSearchTeam={onSearchTeam} onShowCombo={onShowCombo} />
+                  <BetCard key={b.id} b={b} canEdit={canEdit} selected={sel === `bet:${b.id}`} onSelect={() => setSel(`bet:${b.id}`)} onEdit={onEdit} onOpenEdit={onOpenEdit} onDelete={onDelete} onSearchTeam={onSearchTeam} onShowCombo={onShowCombo} />
                 ))}
               </div>
             )}
             {canEdit && (
-              <button onClick={() => onAdd(date)} className="w-full rounded-xl border border-dashed border-line py-2.5 text-sm font-bold text-cyan hover:border-cyan flex items-center justify-center gap-1.5">
+              <button data-nav={`add:${date}`} onClick={() => { setSel(`add:${date}`); onAdd(date) }} className={`w-full rounded-xl border border-dashed py-2.5 text-sm font-bold text-cyan hover:border-cyan flex items-center justify-center gap-1.5 ${sel === `add:${date}` ? 'border-cyan bg-cyan/10 ring-2 ring-cyan/60' : 'border-line'}`}>
                 <Plus size={16} /> Agregar jugada
               </button>
             )}
@@ -131,8 +131,96 @@ function BetCards({ bets, weekStart, pct, canEdit, onEdit, onOpenEdit, onDelete,
   )
 }
 
-export default function BetTable({ bets, weekStart, pct, canEdit, suggest, onEdit, onOpenEdit, onDelete, onAdd, onSearchTeam, onShowCombo }) {
+// Mueve la pantalla lo justo para que la fila elegida se vea (sin quedar tapada por la franja fija de arriba)
+const reveal = (key) => {
+  const el = [...document.querySelectorAll('[data-nav]')].find((x) => x.dataset.nav === key && x.offsetParent !== null)
+  if (!el) return
+  const hdr = document.querySelector('[data-sticky-header]')
+  const top = hdr && getComputedStyle(hdr).position === 'sticky' ? hdr.getBoundingClientRect().bottom + 8 : 8
+  const r = el.getBoundingClientRect()
+  if (r.top < top) window.scrollBy({ top: r.top - top })
+  else if (r.bottom > window.innerHeight - 8) window.scrollBy({ top: r.bottom - window.innerHeight + 8 })
+}
+
+// Elementos navegables que están a la vista, agrupados por fila de la pantalla (en split-screen las tarjetas van de a dos por fila)
+const screenRows = () => {
+  const items = [...document.querySelectorAll('[data-nav]')]
+    .filter((el) => el.offsetParent !== null)
+    .map((el) => { const r = el.getBoundingClientRect(); return { key: el.dataset.nav, top: r.top + window.scrollY, left: r.left, cx: r.left + r.width / 2 } })
+    .sort((a, b) => a.top - b.top || a.left - b.left)
+  const rows = []
+  items.forEach((it) => {
+    const last = rows[rows.length - 1]
+    if (last && Math.abs(it.top - last[0].top) < 8) last.push(it); else rows.push([it])
+  })
+  rows.forEach((r) => r.sort((a, b) => a.left - b.left))
+  return rows
+}
+
+// Siguiente elemento al mover en una dirección. En una sola columna, izquierda y derecha no hacen nada.
+const nextByDirection = (rows, sel, dir, colX) => {
+  const ri = rows.findIndex((r) => r.some((i) => i.key === sel))
+  if (ri < 0) return null
+  const row = rows[ri]
+  const ci = row.findIndex((i) => i.key === sel)
+  if (dir === 'ArrowRight') return ci < row.length - 1 ? row[ci + 1] : row.length > 1 ? rows[ri + 1]?.[0] ?? null : null
+  if (dir === 'ArrowLeft') return ci > 0 ? row[ci - 1] : row.length > 1 ? (rows[ri - 1] ? rows[ri - 1][rows[ri - 1].length - 1] : null) : null
+  const target = rows[ri + (dir === 'ArrowDown' ? 1 : -1)]
+  if (!target) return null
+  const x = colX ?? row[ci].cx
+  return target.reduce((best, i) => (Math.abs(i.cx - x) < Math.abs(best.cx - x) ? i : best), target[0])
+}
+
+export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabled = true, onEdit, onOpenEdit, onDelete, onAdd, onSearchTeam, onShowCombo }) {
   const ro = !canEdit
+  const [sel, setSel] = useState(null) // fila elegida con el teclado: 'bet:<id>' o 'add:<fecha>'
+  const colX = useRef(null) // columna en la que veníamos (para subir y bajar sin saltar de columna)
+
+  // Orden de recorrido: las jugadas de cada día y, al final del día, "Agregar jugada"
+  const order = useMemo(
+    () => DAYS.flatMap((d, i) => {
+      const list = bets.filter((b) => b.dia === d).sort((a, b) => a.fecha.localeCompare(b.fecha)).map((b) => `bet:${b.id}`)
+      return canEdit ? [...list, `add:${addDays(weekStart, i)}`] : list
+    }),
+    [bets, weekStart, canEdit]
+  )
+
+  useEffect(() => { if (sel && !order.includes(sel)) setSel(null) }, [order, sel])
+  useEffect(() => { if (sel) reveal(sel) }, [sel])
+
+  // ↑ ↓ para moverse, Enter para editar (o agregar), Esc para soltar. No actúa mientras se escribe en un campo.
+  useEffect(() => {
+    if (!enabled) return
+    const onKey = (e) => {
+      const t = e.target
+      if (!t || ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName) || t.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const vertical = e.key === 'ArrowDown' || e.key === 'ArrowUp'
+        if (!order.length) return
+        const forward = e.key === 'ArrowDown' || e.key === 'ArrowRight'
+        if (!sel) { e.preventDefault(); setSel(forward ? order[0] : order[order.length - 1]); return }
+        const rows = screenRows()
+        const next = nextByDirection(rows, sel, e.key, colX.current)
+        if (!vertical && !next) return // una sola columna: se deja el comportamiento normal de la flecha
+        e.preventDefault()
+        if (next) {
+          if (rows.find((r) => r.some((i) => i.key === next.key)).length > 1) colX.current = next.cx // quedó en una fila de varias tarjetas
+          setSel(next.key)
+        }
+      } else if (e.key === 'Enter' && sel && !['BUTTON', 'A'].includes(t.tagName)) {
+        e.preventDefault()
+        if (sel.startsWith('add:')) { if (canEdit) onAdd(sel.slice(4)) }
+        else {
+          const bet = bets.find((b) => `bet:${b.id}` === sel)
+          if (bet) canEdit ? onOpenEdit(bet) : isCombo(bet) && onShowCombo(bet)
+        }
+      } else if (e.key === 'Escape' && sel) setSel(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [enabled, order, sel, bets, canEdit, onAdd, onOpenEdit, onShowCombo])
+
+  const navRow = (key) => (sel === key ? 'outline outline-2 -outline-offset-2 outline-cyan !bg-cyan/15' : '')
   return (
     <>
     <div className="hidden wide:block border border-line rounded-2xl overflow-hidden bg-surface/80">
@@ -163,7 +251,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, onEdi
                 const combo = isCombo(b)
                 const legs = selections(b)
                 return (
-                  <tr key={b.id} className={n % 2 ? 'bg-zebra/80' : 'bg-surface/60'}>
+                  <tr key={b.id} data-nav={`bet:${b.id}`} onClick={() => { colX.current = null; setSel(`bet:${b.id}`) }} className={`${n % 2 ? 'bg-zebra/80' : 'bg-surface/60'} ${navRow(`bet:${b.id}`)}`}>
                     <td className={td}>
                       <input
                         type="date" value={b.fecha} readOnly={ro}
@@ -260,7 +348,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, onEdi
                 )
               })}
               {canEdit && (
-                <tr className="bg-surface/40">
+                <tr data-nav={`add:${date}`} onClick={() => setSel(`add:${date}`)} className={`bg-surface/40 ${navRow(`add:${date}`)}`}>
                   <td colSpan={11} className={`${td} px-2 py-0.5`}>
                     <button onClick={() => onAdd(date)} className="inline-flex items-center gap-1 text-xs font-bold text-cyan hover:underline py-0.5">
                       <Plus size={14} /> Agregar jugada
@@ -293,6 +381,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, onEdi
       </table>
     </div>
     <BetCards
+      sel={sel} setSel={(k) => { colX.current = null; setSel(k) }}
       bets={bets} weekStart={weekStart} pct={pct} canEdit={canEdit}
       onEdit={onEdit} onOpenEdit={onOpenEdit} onDelete={onDelete} onAdd={onAdd} onSearchTeam={onSearchTeam} onShowCombo={onShowCombo}
     />

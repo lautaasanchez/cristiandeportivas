@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CLIENTS, addDays, fmtFull, localISO, mondayOf, uid } from './logic'
+import { CLIENTS, addDays, betTeams, fmtFull, localISO, mondayOf, uid } from './logic'
 
 const KEY = 'apuestas-v3'
 const OLD_KEY = 'apuestas-v2'
@@ -16,6 +16,7 @@ const fresh = () => ({
   weekStart: mondayOf(localISO(new Date())),
   history: [], // últimas 3 semanas cerradas (editables)
   notice: null, // aviso de borrado automático
+  teams: {}, // memoria de equipos: nombre -> veces usado (no se borra con las semanas viejas)
 })
 
 const normBets = (bets, clients) => {
@@ -40,7 +41,15 @@ export const normalize = (s) => {
       bets: normBets(w.bets, w.clients || []),
     })),
     notice: s.notice || null,
+    teams: s.teams || {},
   }
+}
+
+// Memoria de equipos: al cargar suma 1; al editar solo agrega los que todavía no se conocían
+const remember = (teams, names, bump) => {
+  const next = { ...(teams || {}) }
+  names.forEach((n) => { next[n] = bump ? (next[n] || 0) + 1 : Math.max(next[n] || 0, 1) })
+  return next
 }
 
 const load = () => {
@@ -94,8 +103,14 @@ export function useStore(externalUser) {
     setWeekStart: (iso) => setState((s) => ({ ...s, weekStart: mondayOf(iso) })),
     dismissNotice: () => setState((s) => ({ ...s, notice: null })),
 
-    add: (c, bet) => upd(c, (l) => [...l, { ...bet, ...stamp({}), createdBy: userName }]),
-    edit: (c, id, patch) => upd(c, (l) => l.map((b) => (b.id === id ? { ...b, ...stamp(patch) } : b))),
+    add: (c, bet) => {
+      upd(c, (l) => [...l, { ...bet, ...stamp({}), createdBy: userName }])
+      setState((s) => ({ ...s, teams: remember(s.teams, betTeams(bet), true) })) // suma una vez más a cada equipo de la jugada
+    },
+    edit: (c, id, patch) => {
+      upd(c, (l) => l.map((b) => (b.id === id ? { ...b, ...stamp(patch) } : b)))
+      if (patch.evento || patch.selecciones) setState((s) => ({ ...s, teams: remember(s.teams, betTeams(patch.selecciones ? { modo: 'combinada', selecciones: patch.selecciones } : patch), false) }))
+    },
     // Edita una jugada de cualquier semana (lo usa la búsqueda por equipo)
     editAt: (target, c, id, patch) =>
       updAt(target, (w) => ({ bets: { ...w.bets, [c]: (w.bets[c] || []).map((b) => (b.id === id ? { ...b, ...stamp(patch) } : b)) } })),

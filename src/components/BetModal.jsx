@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import {
   CURRENCIES, CUR_LABEL, comboLine, dayFromDate, isCombo, localISO, money, parseOdds, shortcutOf, toAmount, uid,
@@ -20,8 +20,10 @@ const startsCombo = (bet) => !!bet && (isCombo(bet) || (bet.lineaRaw && /x/i.tes
 const single = (text) => { const o = parseOdds(text); return o && o.parts === 1 ? o.value : null }
 
 // Sirve para "Nueva jugada" y, con `bet`, para "Editar jugada". Dos modos: Simple y Combinada.
-export default function BetModal({ bet, initialDate, suggest, onSave, onClose }) {
+export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, onClose }) {
   const editing = !!bet
+  const box = useRef()
+  const [saved, setSaved] = useState(0) // jugadas cargadas seguidas con "guardar y cargar otra"
   const [modo, setModo] = useState(startsCombo(bet) ? 'combinada' : 'simple')
   const [sels, setSels] = useState(() => initialSels(bet))
   const [f, setF] = useState(
@@ -38,14 +40,18 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const setSel = (i, patch) => setSels((l) => l.map((s, j) => (j === i ? { ...s, ...patch } : s)))
+  // Tab acepta el primer equipo sugerido ("¿Te referís a …?")
   const tab = (i) => (e) => {
-    const hint = suggest(sels[i].evento)
-    if (e.key === 'Tab' && hint) { e.preventDefault(); setSel(i, { evento: hint }) }
+    const first = suggestAll(sels[i].evento)[0]
+    if (e.key === 'Tab' && !e.shiftKey && first) { e.preventDefault(); setSel(i, { evento: first }) }
   }
 
-  const save = () => {
+  const focusField = (name) => setTimeout(() => box.current?.querySelector(`[data-f="${name}"]`)?.focus(), 0)
+
+  // again = guardar y dejar el formulario listo para la jugada siguiente (se conservan fecha, moneda, modo y cuota)
+  const save = (again = false) => {
     if (!ok) return
-    const list = active.map((s, i) => ({ evento: s.evento.trim().toUpperCase(), tipo: s.tipo, linea: lines[i] }))
+    const list = active.map((s, i) => ({ evento: canon(s.evento) || s.evento.trim().toUpperCase(), tipo: s.tipo, linea: lines[i] }))
     onSave({
       ...(editing ? {} : { id: uid(), estado: 'PENDIENTE' }),
       fecha: f.fecha, dia: dayFromDate(f.fecha), moneda: f.moneda, monto,
@@ -55,7 +61,25 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
       selecciones: combo ? list : null,
       linea: total,
       lineaRaw: combo ? list.map((s) => s.linea).join(' x ') : null,
-    })
+    }, { again: again && !editing })
+    if (again && !editing) {
+      setSels([blank(), blank()])
+      setSaved((n) => n + 1)
+      focusField('evento-0')
+    }
+  }
+
+  // Enter guarda si está todo completo; si falta algo, salta al primer dato que falta
+  const onEnter = (e) => {
+    if (e.key === 'Escape') return onClose()
+    if (e.key !== 'Enter' || e.target.tagName === 'BUTTON') return
+    e.preventDefault()
+    if (ok) return save(e.ctrlKey || e.metaKey)
+    if (!(monto > 0)) return focusField('cuota')
+    const iEv = active.findIndex((x) => !x.evento.trim())
+    if (iEv >= 0) return focusField(`evento-${iEv}`)
+    const iLn = lines.findIndex((n) => !n)
+    if (iLn >= 0) return focusField(`linea-${iLn}`)
   }
 
   const row = (s, i) => (
@@ -63,7 +87,7 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
       <div className="flex items-center gap-2">
         {combo && <span className="text-xs font-extrabold text-gold w-5">{i + 1}</span>}
         <input
-          className="field !py-1.5" placeholder={combo ? 'Equipo / evento' : 'Ej: INSTITUTO'} value={s.evento}
+          className="field !py-1.5" placeholder={combo ? 'Equipo / evento' : 'Ej: INSTITUTO'} value={s.evento} data-f={`evento-${i}`}
           autoFocus={!editing && i === 0}
           onChange={(e) => setSel(i, { evento: e.target.value })} onKeyDown={tab(i)}
         />
@@ -73,12 +97,26 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
           </button>
         )}
       </div>
-      {suggest(s.evento) && <div className="text-xs text-gold">Tab ⇥ para completar: <b>{suggest(s.evento)}</b></div>}
+      {(() => {
+        const opts = suggestAll(s.evento)
+        return opts.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-gold font-semibold">¿Te referís a</span>
+            {opts.map((name, k) => (
+              <button key={name} type="button" onClick={() => setSel(i, { evento: name })} tabIndex={-1}
+                className="rounded-full border border-gold/60 bg-gold/10 px-2 py-0.5 font-bold text-gold hover:bg-gold/20">
+                {name}{k === 0 && <span className="font-normal opacity-70"> · Tab ⇥</span>}
+              </button>
+            ))}
+            <span className="text-gold font-semibold">?</span>
+          </div>
+        )
+      })()}
       <div className="grid grid-cols-[1fr_96px] gap-2">
         <select className="field !py-1.5 !text-sm" value={s.tipo} onChange={(e) => setSel(i, { tipo: e.target.value })}>
           {MARKETS.map((m) => <option key={m.id} value={m.id}>{m.id ? m.label : 'Tipo de jugada'}</option>)}
         </select>
-        <input className="field num !py-1.5 text-right" inputMode="decimal" placeholder="Línea" value={s.linea} onChange={(e) => setSel(i, { linea: e.target.value })} />
+        <input className="field num !py-1.5 text-right" inputMode="decimal" placeholder="Línea" value={s.linea} data-f={`linea-${i}`} onChange={(e) => setSel(i, { linea: e.target.value })} />
       </div>
     </div>
   )
@@ -86,9 +124,10 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={onClose}>
       <div
+        ref={box}
         className="glass border rounded-2xl w-full max-w-md max-h-[94vh] overflow-y-auto p-5 space-y-3 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && save()}
+        onKeyDown={onEnter}
       >
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-extrabold">{editing ? 'Editar jugada' : 'Nueva jugada'}</h2>
@@ -122,7 +161,7 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
         </label>
         <label className="block font-semibold">
           Cuota (monto jugado) {f.moneda === 'USD' && <span className="text-muted font-normal">· dólares, valor directo</span>}
-          <input inputMode="decimal" className="field num mt-1" placeholder="Ej: 100" value={f.cuota} onChange={set('cuota')} />
+          <input inputMode="decimal" className="field num mt-1" placeholder="Ej: 100" value={f.cuota} data-f="cuota" onChange={set('cuota')} />
           <span className="num text-win text-sm">(Equivale a {money(monto, f.moneda)})</span>
         </label>
 
@@ -139,10 +178,14 @@ export default function BetModal({ bet, initialDate, suggest, onSave, onClose })
           )}
         </div>
 
-        <div className="flex gap-2 pt-1 justify-end">
-          <button onClick={onClose} className="btn">Cancelar</button>
-          <button onClick={save} disabled={!ok} className="btn-primary">{editing ? 'Guardar cambios' : 'Guardar'}</button>
+        {saved > 0 && <div className="text-sm font-semibold text-win">✓ {saved === 1 ? 'Jugada guardada' : `${saved} jugadas guardadas`}. Cargá la siguiente.</div>}
+
+        <div className="flex flex-wrap gap-2 pt-1 justify-end">
+          <button onClick={onClose} className="btn">{saved > 0 ? 'Listo' : 'Cancelar'}</button>
+          {!editing && <button onClick={() => save(true)} disabled={!ok} className="btn" title="Atajo: Ctrl + Enter">Guardar y cargar otra</button>}
+          <button onClick={() => save(false)} disabled={!ok} className="btn-primary" title="Atajo: Enter">{editing ? 'Guardar cambios' : 'Guardar'}</button>
         </div>
+        <p className="text-[11px] text-muted">Enter guarda · Ctrl + Enter guarda y abre otra · Tab completa el equipo sugerido · Esc cierra</p>
       </div>
     </div>
   )

@@ -87,20 +87,61 @@ export const teamMatches = (query, name) => {
   return q.length > 0 && normText(name).includes(q)
 }
 
-// Autocompletado de eventos: el nombre más frecuente que empiece con lo escrito (cuenta también cada equipo de las combinadas)
-export const buildFreq = (weeks) => {
-  const m = new Map()
-  weeks.forEach((w) => Object.values(w.bets || {}).forEach((l) => l.forEach((b) => betTeams(b).forEach((t) => m.set(t, (m.get(t) || 0) + 1)))))
+// ---- Memoria de equipos y sugerencias ("¿Te referís a …?") ----
+// nombre -> veces usado. Junta la memoria guardada (no se borra cuando se eliminan semanas viejas) con lo que hay en las jugadas.
+export const buildFreq = (weeks, memory = {}) => {
+  const m = new Map(Object.entries(memory || {}))
+  const counts = new Map()
+  weeks.forEach((w) => Object.values(w.bets || {}).forEach((l) => l.forEach((b) => betTeams(b).forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)))))
+  counts.forEach((n, t) => m.set(t, Math.max(m.get(t) || 0, n)))
   return m
 }
-export const suggestFrom = (freq, typed) => {
-  const p = String(typed || '').trim().toUpperCase()
-  if (!p) return null
-  let best = null
-  freq.forEach((n, name) => {
-    if (name.startsWith(p) && name !== p && (!best || n > best[1] || (n === best[1] && name.length < best[0].length))) best = [name, n]
-  })
-  return best ? best[0] : null
+
+const lev = (a, b) => { // distancia de edición (cuántas letras cambian entre dos palabras)
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)])
+  for (let j = 1; j <= b.length; j++) d[0][j] = j
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+  return d[a.length][b.length]
+}
+const toks = (t) => normText(t).split(' ').filter(Boolean)
+// qué tan bien una palabra escrita coincide con una palabra del equipo (1 = empieza igual; menos = parecida con errores)
+const tokenScore = (q, w) => {
+  if (w.startsWith(q)) return 1
+  if (q.length < 3) return 0
+  const d = Math.min(lev(q, w), lev(q, w.slice(0, q.length)))
+  const sim = 1 - d / q.length
+  return sim >= 0.7 ? 0.9 * sim : 0
+}
+// { group, score } o null. group 0: el nombre empieza igual · 1: cada palabra empieza igual · 2: parecido (errores de tipeo, palabras pegadas)
+const rank = (typed, name) => {
+  const qn = normText(typed), nn = normText(name)
+  if (!qn || nn === qn) return null
+  if (nn.startsWith(qn)) return { group: 0, score: 1 }
+  const best = toks(typed).map((q) => Math.max(0, ...toks(name).map((w) => tokenScore(q, w))))
+  if (best.length && best.every((x) => x > 0)) return { group: best.every((x) => x === 1) ? 1 : 2, score: best.reduce((a, b) => a + b, 0) / best.length }
+  const qj = qn.replace(/ /g, ''), nj = nn.replace(/ /g, '')
+  if (qj.length >= 4) {
+    const sim = 1 - lev(qj, nj.slice(0, qj.length)) / qj.length
+    if (sim >= 0.8) return { group: 2, score: 0.8 * sim }
+  }
+  return null
+}
+// Hasta n equipos conocidos que se parecen a lo escrito, del más probable al menos probable
+export const suggestMany = (freq, typed, n = 3) => {
+  if (normText(typed).length < 2) return []
+  const out = []
+  freq.forEach((count, name) => { const r = rank(typed, name); if (r) out.push({ name, ...r, count }) })
+  out.sort((a, b) => a.group - b.group || b.score - a.score || b.count - a.count || a.name.length - b.name.length)
+  return out.slice(0, n).map((x) => x.name)
+}
+export const suggestFrom = (freq, typed) => suggestMany(freq, typed, 1)[0] || null
+// Si lo escrito es un equipo ya conocido (sin importar mayúsculas ni tildes), se usa su forma guardada
+export const canonicalTeam = (freq, typed) => {
+  const qn = normText(typed)
+  for (const name of freq.keys()) if (normText(name) === qn) return name
+  return null
 }
 
 export const localISO = (d) =>
