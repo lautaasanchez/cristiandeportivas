@@ -5,6 +5,7 @@ import {
 import { BANCA, addDays, buildFreq, fmtFull, suggestFrom, totalsByCur } from './lib/logic'
 import { MAX_HISTORY, useStore } from './lib/useStore'
 import { useCloud } from './lib/useCloud'
+import { useAuth } from './lib/useAuth'
 import { exportCSV, exportJSON, exportXLSX } from './lib/export'
 import ClientSelect from './components/ClientSelect'
 import SummaryCards from './components/SummaryCards'
@@ -13,7 +14,9 @@ import BetModal from './components/BetModal'
 import ConfirmModal from './components/ConfirmModal'
 import UserGate from './components/UserGate'
 import Sidebar from './components/Sidebar'
-import CloudGate from './components/CloudGate'
+import AuthGate, { WaitingScreen } from './components/AuthGate'
+import AccountMenu from './components/AccountMenu'
+import { ForcePasswordScreen } from './components/ChangePassword'
 import FeeInput from './components/FeeInput'
 import SearchBar from './components/SearchBar'
 import ComboDetail from './components/ComboDetail'
@@ -38,8 +41,10 @@ function CloudPill({ cloud }) {
 const safe = (fn, fallback) => { try { return fn() } catch { return fallback } }
 
 export default function App() {
-  const s = useStore()
-  const cloud = useCloud(s.state, s.applyRemote)
+  const auth = useAuth()
+  // Con la nube, quien manda es la persona que inició sesión; sin nube se usa el selector local (Cris / Vale)
+  const s = useStore(auth.enabled ? auth.storeUser : undefined)
+  const cloud = useCloud(s.state, s.applyRemote, auth)
   const { users, history, notice } = s.state
   const { week } = s
   const { clients, bets: allBets, weekStart, fees } = week
@@ -104,9 +109,14 @@ export default function App() {
     e.target.value = ''
   }
 
-  if (cloud.needsCode) return <CloudGate onConnect={cloud.connect} onLocal={cloud.useLocalOnly} />
+  if (auth.enabled) {
+    if (auth.loading) return <div className="fixed inset-0 bg-bg flex items-center justify-center text-muted">Cargando…</div>
+    if (!auth.user) return <AuthGate auth={auth} />
+    if (auth.user.mustChange) return <ForcePasswordScreen auth={auth} />
+    if (auth.user.role !== 'read' && auth.user.role !== 'edit') return <WaitingScreen auth={auth} />
+  }
 
-  if (!s.user || switching)
+  if (!auth.enabled && (!s.user || switching))
     return (
       <UserGate
         users={users}
@@ -124,7 +134,7 @@ export default function App() {
         open={menu} onClose={() => setMenu(false)}
         view={s.view} onView={(v) => { s.setView(v); setOnlyPending(false) }}
         current={{ weekStart: s.state.weekStart, clients: s.state.clients, bets: s.state.bets, fees: s.state.fees }}
-        history={history} notice={notice} onDismissNotice={s.dismissNotice} onExport={exportXLSX} cloud={cloud}
+        history={history} notice={notice} onDismissNotice={s.dismissNotice} onExport={exportXLSX}
       />
 
       <div className="wide:sticky wide:top-0 z-30 bg-bg/90 backdrop-blur">
@@ -149,10 +159,14 @@ export default function App() {
               <button className="btn justify-center !py-1" onClick={() => setDark((d) => !d)} title="Modo día / noche" aria-label="Cambiar tema">
                 {dark ? <Sun size={16} /> : <Moon size={16} />}
               </button>
-              <button className="btn justify-center !py-1" onClick={() => setSwitching(true)} title="Cambiar de usuario">
-                {canEdit ? <UserRound size={16} /> : <Eye size={16} />} {s.user.name}
-                {!canEdit && <span className="text-muted font-normal text-xs">(solo lectura)</span>}
-              </button>
+              {auth.enabled ? (
+                <AccountMenu auth={auth} />
+              ) : (
+                <button className="btn justify-center !py-1" onClick={() => setSwitching(true)} title="Cambiar de usuario">
+                  {canEdit ? <UserRound size={16} /> : <Eye size={16} />} {s.user.name}
+                  {!canEdit && <span className="text-muted font-normal text-xs">(solo lectura)</span>}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -56,7 +56,8 @@ export function merge(base, mine, theirs) {
 }
 
 // backend: { get() -> {state, version} | null, set(state, expectedVersion) -> {ok, state, version}, notify?() }
-export function createSync({ backend, getLocal, onRemote, onStatus = () => {}, backupLocal }) {
+// readOnly: solo trae los cambios de la nube (usuarios de solo lectura). isEmpty: detecta una planilla vacía.
+export function createSync({ backend, getLocal, onRemote, onStatus = () => {}, backupLocal, readOnly = false, isEmpty = () => false }) {
   let base = null
   let busy = false
   let again = false
@@ -73,6 +74,14 @@ export function createSync({ backend, getLocal, onRemote, onStatus = () => {}, b
         const local = getLocal()
         const remote = await backend.get()
 
+        if (readOnly) { // solo lectura: lo de la nube manda, no se sube nada
+          if (remote) {
+            base = { state: snap(remote.state), version: remote.version }
+            if (!same(remote.state, getLocal())) onRemote(remote.state)
+          }
+          break
+        }
+
         if (!remote) { // sala vacía: se siembra con lo que hay acá
           const r = await backend.set(local, 0)
           if (r.ok) { base = { state: snap(local), version: r.version }; backend.notify?.(); break }
@@ -80,9 +89,13 @@ export function createSync({ backend, getLocal, onRemote, onStatus = () => {}, b
         }
 
         let merged
-        if (!base) { // primer contacto con una sala que ya tiene datos: manda la nube (se guarda copia de lo local)
-          if (!same(local, remote.state)) backupLocal?.(local)
-          merged = remote.state
+        if (!base) {
+          if (isEmpty(remote.state) && !isEmpty(local)) {
+            merged = local // la nube está vacía y acá hay datos: se suben (migración inicial)
+          } else { // primer contacto con una planilla que ya tiene datos: manda la nube (se guarda copia de lo local)
+            if (!same(local, remote.state)) backupLocal?.(local)
+            merged = remote.state
+          }
         } else {
           merged = merge(base.state, local, remote.state)
         }

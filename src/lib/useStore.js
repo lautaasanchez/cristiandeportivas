@@ -52,7 +52,7 @@ const load = () => {
   }
 }
 
-export function useStore() {
+export function useStore(externalUser) {
   const [state, setState] = useState(load)
   const [viewRaw, setView] = useState('current')
   const [userId, setUserIdState] = useState(() => {
@@ -62,7 +62,8 @@ export function useStore() {
     try { localStorage.setItem(KEY, JSON.stringify(state)) } catch {}
   }, [state])
 
-  const user = state.users.find((u) => u.id === userId) || null
+  const localUser = state.users.find((u) => u.id === userId) || null
+  const user = externalUser !== undefined ? externalUser : localUser // con la nube, manda la persona que inició sesión
   const userName = user?.name
   const setUserId = (id) => {
     setUserIdState(id)

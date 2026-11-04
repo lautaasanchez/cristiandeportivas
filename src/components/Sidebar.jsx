@@ -27,7 +27,7 @@ function WeekItem({ title, subtitle, active, week, onOpen, onExport }) {
   )
 }
 
-export default function Sidebar({ open, onClose, view, onView, current, history, notice, onDismissNotice, onExport, cloud }) {
+export default function Sidebar({ open, onClose, view, onView, current, history, notice, onDismissNotice, onExport }) {
   return (
     <>
       <div
@@ -76,21 +76,6 @@ export default function Sidebar({ open, onClose, view, onView, current, history,
                 onExport={() => onExport(w)}
               />
             ))}
-          </section>
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted"><Cloud size={14} /> Nube</h3>
-            {!cloud.enabled && (
-              <p className="text-xs text-muted">La nube no está configurada: los datos se guardan solo en este navegador. Mirá el README para activar la planilla compartida.</p>
-            )}
-            {cloud.enabled && cloud.code && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted">Conectado con el código <b className="text-ink">{cloud.code.length > 6 ? cloud.code.slice(0, 3) + '•••' + cloud.code.slice(-2) : '•••'}</b>. Cualquier cambio se ve en los demás dispositivos en segundos.</p>
-                <button onClick={cloud.disconnect} className="btn !py-1 text-xs w-full justify-center"><LogOut size={14} /> Cambiar / salir del código</button>
-              </div>
-            )}
-            {cloud.enabled && !cloud.code && (
-              <button onClick={cloud.askCode} className="btn !py-1 text-xs w-full justify-center"><Cloud size={14} /> Conectar con un código</button>
-            )}
           </section>
         </div>
       </aside>
