@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Eye, KeyRound, LogOut, Pencil, ShieldCheck, UserRound } from 'lucide-react'
 import { rpc } from '../lib/cloud'
 import UsersPanel, { pendingCount } from './UsersPanel'
@@ -63,8 +64,9 @@ export default function AccountMenu({ auth }) {
         </div>
       )}
 
-      {panel && <UsersPanel token={auth.token} me={user.username} onClose={() => setPanel(false)} onChanged={setPending} />}
-      {changePass && <ChangePasswordModal auth={auth} onClose={() => setChangePass(false)} />}
+      {/* Las ventanas se dibujan en <body>: la cabecera tiene desenfoque (backdrop-filter) y, si no, el fondo y el cristal quedaban recortados a su tamaño */}
+      {panel && createPortal(<UsersPanel token={auth.token} me={user.username} onClose={() => setPanel(false)} onChanged={setPending} />, document.body)}
+      {changePass && createPortal(<ChangePasswordModal auth={auth} onClose={() => setChangePass(false)} />, document.body)}
     </div>
   )
 }
