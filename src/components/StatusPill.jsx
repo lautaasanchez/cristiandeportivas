@@ -14,7 +14,7 @@ export default function StatusPill({ value, onChange, disabled }) {
       disabled={disabled}
       onClick={() => onChange(next)}
       title={disabled ? value : `Click para cambiar a ${next}`}
-      className={`px-2 py-0.5 rounded-full border font-bold text-[11px] w-[88px] ${style[value]} ${disabled ? 'cursor-default' : 'hover:brightness-110'}`}
+      className={`px-2 py-0.5 rounded-full border font-bold text-[11px] w-[88px] shadow-sm transition-all duration-200 ${style[value]} ${value === 'PENDIENTE' ? 'soft-pulse' : ''} ${disabled ? 'cursor-default' : 'hover:brightness-110 hover:shadow-md active:scale-95'}`}
     >
       {value}
     </button>

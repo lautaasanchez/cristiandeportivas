@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { UserPlus, User, Eye, Pencil, X } from 'lucide-react'
+import { useExit } from '../lib/useExit'
 
 export default function UserGate({ users, onPick, onAdd, onClose }) {
+  const { close, ov, card } = useExit(onClose || (() => {}))
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [perm, setPerm] = useState('edit')
@@ -15,14 +17,14 @@ export default function UserGate({ users, onPick, onAdd, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-md flex items-center justify-center p-3" onClick={onClose}>
-      <div className="bg-surface border border-line rounded-lg w-full max-w-sm p-5 space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-[60] bg-black/70 backdrop-blur-md flex items-center justify-center p-3 ${ov}`} onClick={onClose ? close : undefined}>
+      <div className={`glass border rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl ${card}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold">¿Quién está usando la planilla?</h2>
             <p className="text-muted text-sm">Elegí tu usuario para registrar tus cambios.</p>
           </div>
-          {onClose && <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>}
+          {onClose && <button onClick={close} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>}
         </div>
 
         <div className="space-y-2">

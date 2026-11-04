@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff, ShieldPlus, Trash2, X } from 'lucide-react'
 import { rpc } from '../lib/cloud'
+import { useExit } from '../lib/useExit'
 
 const ROLE = { edit: 'Editor', read: 'Solo lectura', pending: 'Sin acceso', blocked: 'Bloqueado' }
 const ROLE_PILL = { edit: 'pill-win', read: 'pill-cyan', pending: 'pill-gold', blocked: 'pill-mute' }
@@ -18,6 +19,7 @@ const explain = (e) => Object.entries(MESSAGES).find(([k]) => String(e.message).
 
 // Panel de administradores: aprobar cuentas, permisos, administradores, contraseñas y bajas
 export default function UsersPanel({ token, me, onClose, onChanged }) {
+  const { close, ov, card } = useExit(onClose)
   const [users, setUsers] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
@@ -69,12 +71,12 @@ export default function UsersPanel({ token, me, onClose, onChanged }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-3 pt-10" onClick={onClose}>
-      <div className="glass border rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-3 pt-10 ${ov}`} onClick={close}>
+      <div className={`glass border rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl ${card}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-line">
           <ShieldCheck size={18} className="text-gold" />
           <h2 className="font-extrabold text-base flex-1">Usuarios y permisos</h2>
-          <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
+          <button onClick={close} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <div className="overflow-y-auto p-4 space-y-5">
@@ -99,7 +101,7 @@ export default function UsersPanel({ token, me, onClose, onChanged }) {
                 <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-muted">Cuentas nuevas esperando aprobación ({newAccounts.length})</h3>
                 {newAccounts.length === 0 && <p className="text-sm text-muted">No hay cuentas nuevas esperando.</p>}
                 {newAccounts.map((u) => (
-                  <div key={u.out_id} className="flex flex-wrap items-center gap-2 rounded-xl border border-gold/50 bg-gold/10 px-3 py-2">
+                  <div key={u.out_id} className="flex flex-wrap items-center gap-2 rounded-xl border border-gold/50 bg-gold/10 px-3 py-2 soft-pulse">
                     <div className="flex-1 min-w-[160px]">
                       <div className="font-bold truncate">{u.out_display} <span className="text-muted font-normal text-xs">@{u.out_username}</span></div>
                       <div className="text-xs text-muted">Pidió: {u.out_wants ? 'ver y editar' : 'solo ver'}</div>
@@ -165,8 +167,8 @@ export default function UsersPanel({ token, me, onClose, onChanged }) {
       {confirm && (() => {
         const t = texts[confirm.kind](confirm.user)
         return (
-          <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-3" onClick={(e) => { e.stopPropagation(); setConfirm(null) }}>
-            <div className="bento w-full max-w-sm p-5 space-y-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 modal-ov" onClick={(e) => { e.stopPropagation(); setConfirm(null) }}>
+            <div className="bento w-full max-w-sm p-5 space-y-3 shadow-2xl modal-card" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-lg font-bold">{t.title}</h3>
               <p className="text-muted text-sm">{t.body}</p>
               <div className="flex gap-2 justify-end">

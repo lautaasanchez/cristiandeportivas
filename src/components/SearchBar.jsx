@@ -58,7 +58,7 @@ export default function SearchBar({ weeks, query, onQuery, canEdit, onGo, onEsta
   return (
     <div ref={box} className="flex-1 min-w-0">
       <div className="relative">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan pointer-events-none" />
+        <Search size={18} className="absolute z-10 left-3 top-1/2 -translate-y-1/2 text-cyan pointer-events-none" />
         <input
           value={query}
           onChange={(e) => { onQuery(e.target.value); setOpen(true) }}
@@ -68,14 +68,14 @@ export default function SearchBar({ weeks, query, onQuery, canEdit, onGo, onEsta
           className="field bento !pl-10 !pr-10 !py-3 !rounded-2xl !border-line/80"
         />
         {query && (
-          <button onClick={() => { onQuery(''); setOpen(false) }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink" aria-label="Borrar búsqueda">
+          <button onClick={() => { onQuery(''); setOpen(false) }} className="absolute z-10 right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink" aria-label="Borrar búsqueda">
             <X size={18} />
           </button>
         )}
       </div>
 
       {showPanel && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-40 glass border rounded-2xl shadow-2xl max-h-[62vh] flex flex-col overflow-hidden">
+        <div className="absolute left-0 right-0 top-full mt-1 z-40 glass border rounded-2xl shadow-2xl max-h-[62vh] flex flex-col overflow-hidden pop-in">
           <div className="flex flex-wrap items-center gap-3 px-4 py-2 border-b border-line text-xs">
             <span className="font-semibold text-muted">
               {results.length} jugada{results.length === 1 ? '' : 's'} con “{query.trim()}” (simples y combinadas, todos los clientes y semanas)

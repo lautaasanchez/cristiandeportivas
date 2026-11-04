@@ -28,8 +28,8 @@ export default function AuthGate({ auth }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-bg overflow-y-auto flex items-center justify-center p-4">
-      <div className="bento w-full max-w-sm p-6 space-y-4 shadow-2xl" onKeyDown={(e) => e.key === 'Enter' && submit()}>
+    <div className="fixed inset-0 z-[70] bg-bg overflow-y-auto flex items-center justify-center p-4 modal-ov">
+      <div className="bento w-full max-w-sm p-6 space-y-4 shadow-2xl modal-card" onKeyDown={(e) => e.key === 'Enter' && submit()}>
         <div className="flex items-center gap-2.5">
           <span className="rounded-xl bg-cta/20 p-2 text-cyan"><Cloud size={22} /></span>
           <div>
@@ -99,8 +99,8 @@ export default function AuthGate({ auth }) {
 // Cuenta registrada pero sin acceso todavía (lectura automática desactivada) o bloqueada
 export function WaitingScreen({ auth }) {
   return (
-    <div className="fixed inset-0 z-[70] bg-bg flex items-center justify-center p-4">
-      <div className="bento w-full max-w-sm p-6 space-y-3 text-center shadow-2xl">
+    <div className="fixed inset-0 z-[70] bg-bg flex items-center justify-center p-4 modal-ov">
+      <div className="bento w-full max-w-sm p-6 space-y-3 text-center shadow-2xl modal-card">
         <h1 className="text-lg font-extrabold">Hola, {auth.user.displayName}</h1>
         <p className="text-sm text-muted">
           {auth.user.role === 'blocked'

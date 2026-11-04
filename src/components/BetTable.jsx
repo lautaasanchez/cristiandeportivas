@@ -51,10 +51,10 @@ function BetCard({ b, canEdit, selected, onSelect, onEdit, onOpenEdit, onDelete,
   const combo = isCombo(b)
   const legs = selections(b)
   return (
-    <article data-nav={`bet:${b.id}`} onClick={onSelect} className={`bento p-3 space-y-2.5 ${selected ? '!border-cyan ring-2 ring-cyan/60 bg-cyan/5' : ''}`}>
+    <article data-nav={`bet:${b.id}`} onClick={onSelect} className={`bento-flat p-3 space-y-2.5 hover:-translate-y-0.5 hover:shadow-lg ${selected ? '!border-cyan ring-2 ring-cyan/60 bg-cyan/5' : ''}`}>
       <div className="flex items-center gap-1.5">
         <span className={`pill ${cur === 'ARS' ? 'pill-cyan' : 'pill-gold'}`}>{cur}</span>
-        <span className={`pill ${combo ? 'pill-cyan' : 'pill-mute'}`}>{combo ? 'COMBINADA' : 'SIMPLE'}</span>
+        <span className={`pill ${combo ? 'pill-cyan' : 'pill-indigo'}`}>{combo ? 'COMBINADA' : 'SIMPLE'}</span>
         <span className="ml-auto"><StatusPill disabled={!canEdit} value={b.estado} onChange={(estado) => onEdit(b.id, { estado })} /></span>
       </div>
       <button onClick={combo ? () => onShowCombo(b) : undefined} className={`block w-full text-left ${combo ? '' : 'cursor-default'}`}>
@@ -71,7 +71,7 @@ function BetCard({ b, canEdit, selected, onSelect, onEdit, onOpenEdit, onDelete,
         <Field label="Pago al cliente">{money(payout(b), cur)}</Field>
       </div>
       <div className="flex items-center gap-1.5 border-t border-line/70 pt-2">
-        {b.modBy ? <span className="pill pill-indigo normal-case !tracking-normal !text-[10px] truncate">Mod. por {b.modBy}</span> : null}
+        {b.modBy ? <span className="pill pill-violet normal-case !tracking-normal !text-[10px] truncate">Mod. por {b.modBy}</span> : null}
         <span className="ml-auto" />
         <button onClick={() => (combo ? onShowCombo(b) : onSearchTeam(b.evento, b))} className="btn !px-2.5 !py-2" aria-label="Buscar equipo"><Search size={16} /></button>
         {canEdit && (
@@ -115,7 +115,7 @@ function BetCards({ bets, weekStart, pct, canEdit, sel, setSel, onEdit, onOpenEd
               const t = totals(sub)
               const bal = balanceOf(t, pct)
               return (
-                <div key={c} className="bento px-3 py-2 text-xs flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <div key={c} className="bento-flat px-3 py-2 text-xs flex flex-wrap items-baseline gap-x-4 gap-y-1">
                   <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
                   <Chip label="Apostado" value={money(t.played, c)} tone="" />
                   <Chip label="Perdido" value={money(-t.lost, c)} tone={t.lost < 0 ? 'text-win' : 'text-muted'} />
@@ -251,7 +251,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                 const combo = isCombo(b)
                 const legs = selections(b)
                 return (
-                  <tr key={b.id} data-nav={`bet:${b.id}`} onClick={() => { colX.current = null; setSel(`bet:${b.id}`) }} className={`${n % 2 ? 'bg-zebra/80' : 'bg-surface/60'} ${navRow(`bet:${b.id}`)}`}>
+                  <tr key={b.id} data-nav={`bet:${b.id}`} onClick={() => { colX.current = null; setSel(`bet:${b.id}`) }} className={`${n % 2 ? 'bg-zebra/80' : 'bg-surface/60'} transition-all duration-200 hover:-translate-y-0.5 hover:bg-cyan/5 hover:shadow-lg hover:relative hover:z-[1] ${navRow(`bet:${b.id}`)}`}>
                     <td className={td}>
                       <input
                         type="date" value={b.fecha} readOnly={ro}
@@ -281,7 +281,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                         </button>
                       ) : (
                         <div className="flex items-center gap-1.5 pl-2">
-                          <span className="pill pill-mute shrink-0">SIMPLE</span>
+                          <span className="pill pill-indigo shrink-0">SIMPLE</span>
                           <Cell value={b.evento} readOnly={ro} suggest={ro ? null : suggest} onCommit={(v) => v.trim() && onEdit(b.id, { evento: v.trim().toUpperCase() })} className="font-semibold" />
                         </div>
                       )}
@@ -326,7 +326,7 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                     <td className={`${td} px-3 py-2 text-right num`}>{money(payout(b), cur)}</td>
                     <td className={`${td} px-3 text-[11px] text-muted whitespace-nowrap overflow-hidden text-ellipsis`}
                         title={b.modAt ? `${new Date(b.modAt).toLocaleString('es-AR')}${b.createdBy ? ` · Creada por ${b.createdBy}` : ''}` : ''}>
-                      {b.modBy ? <span className="pill pill-indigo normal-case !tracking-normal !text-[10px]">Mod. por {b.modBy}</span> : '—'}
+                      {b.modBy ? <span className="pill pill-violet normal-case !tracking-normal !text-[10px]">Mod. por {b.modBy}</span> : '—'}
                     </td>
                     <td className={`${td} px-1 whitespace-nowrap text-center`}>
                       <button

@@ -32,7 +32,7 @@ function CloudPill({ cloud }) {
   }[cloud.status]
   const [cls, text, Icon] = look
   return (
-    <span className={`pill ${cls} normal-case !tracking-normal !text-[11px] gap-1`} title={cloud.enabled ? 'Los cambios se comparten en tiempo real' : 'La nube no está configurada: los datos quedan solo en este navegador'}>
+    <span className={`pill ${cls} normal-case !tracking-normal !text-[11px] gap-1 ${cloud.status === 'syncing' ? 'soft-pulse' : ''}`} title={cloud.enabled ? 'Los cambios se comparten en tiempo real' : 'La nube no está configurada: los datos quedan solo en este navegador'}>
       <Icon size={12} className={cloud.status === 'syncing' ? 'animate-spin' : ''} /> {text}
     </span>
   )
@@ -139,7 +139,7 @@ export default function App() {
         history={history} notice={notice} onDismissNotice={s.dismissNotice} onExport={exportXLSX}
       />
 
-      <div data-sticky-header className="wide:sticky wide:top-0 z-30 bg-bg/90 backdrop-blur">
+      <div data-sticky-header className="wide:sticky wide:top-0 z-30 bg-bg/80 backdrop-blur-md">
       <div className="max-w-[1600px] mx-auto px-3 pt-3 pb-2 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
@@ -249,7 +249,7 @@ export default function App() {
         <BetModal
           bet={modal.bet} initialDate={modal.date} suggestAll={suggestAll} canon={canon}
           onClose={() => setModal(null)}
-          onSave={(b, opts) => { modal.bet ? s.edit(active, modal.bet.id, b) : s.add(active, b); if (!opts?.again) setModal(null) }}
+          onSave={(b) => { modal.bet ? s.edit(active, modal.bet.id, b) : s.add(active, b) }}
         />
       )}
       {confirm?.type === 'week' && (

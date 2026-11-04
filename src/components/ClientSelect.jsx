@@ -40,7 +40,7 @@ export default function ClientSelect({ clients, active, onChange, onAdd, onRenam
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-[min(92vw,380px)] glass border rounded-2xl shadow-2xl p-2 space-y-2">
+        <div className="absolute left-0 top-full mt-1 z-50 w-[min(92vw,380px)] glass border rounded-2xl shadow-2xl p-2 space-y-2 pop-in">
           {mode ? (
             <div className="flex gap-2">
               <input

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { KeyRound, Loader2, X } from 'lucide-react'
+import { useExit } from '../lib/useExit'
 
 // Formulario para elegir una contraseña nueva. En modo "forced" (clave temporal) no pide la actual: ya la tiene la sesión.
 function Form({ auth, forced, onDone }) {
@@ -44,8 +45,8 @@ function Form({ auth, forced, onDone }) {
 // Pantalla obligatoria después de entrar con una clave temporal
 export function ForcePasswordScreen({ auth }) {
   return (
-    <div className="fixed inset-0 z-[70] bg-bg flex items-center justify-center p-4">
-      <div className="bento w-full max-w-sm p-6 space-y-3 shadow-2xl">
+    <div className="fixed inset-0 z-[70] bg-bg flex items-center justify-center p-4 modal-ov">
+      <div className="bento w-full max-w-sm p-6 space-y-3 shadow-2xl modal-card">
         <div className="flex items-center gap-2"><KeyRound size={20} className="text-gold" /><h1 className="text-lg font-extrabold">Elegí tu contraseña nueva</h1></div>
         <p className="text-sm text-muted">Entraste con una clave temporal que te dio Cris o Vale. Elegí una contraseña propia para seguir.</p>
         <Form auth={auth} forced />
@@ -58,18 +59,19 @@ export function ForcePasswordScreen({ auth }) {
 // Ventana para cambiar la contraseña desde el menú de la cuenta
 export default function ChangePasswordModal({ auth, onClose }) {
   const [done, setDone] = useState(false)
+  const { close, ov, card } = useExit(onClose)
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3" onClick={onClose}>
-      <div className="glass border rounded-2xl w-full max-w-sm p-5 space-y-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 ${ov}`} onClick={close}>
+      <div className={`glass border rounded-2xl w-full max-w-sm p-5 space-y-3 shadow-2xl ${card}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2">
           <KeyRound size={18} className="text-gold" />
           <h2 className="font-extrabold flex-1">Cambiar contraseña</h2>
-          <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
+          <button onClick={close} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
         </div>
         {done ? (
           <>
             <p className="text-sm text-win font-semibold">Listo: tu contraseña se cambió. Si tenías la sesión abierta en otros equipos, se cerraron.</p>
-            <button onClick={onClose} className="btn w-full justify-center">Cerrar</button>
+            <button onClick={close} className="btn w-full justify-center">Cerrar</button>
           </>
         ) : <Form auth={auth} onDone={() => setDone(true)} />}
       </div>

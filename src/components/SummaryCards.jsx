@@ -3,7 +3,7 @@ import { BANCA, CUR_LABEL, balanceOf, feeOf, money } from '../lib/logic'
 // Mini tarjeta interna: etiqueta chica, monto en monoespaciado y negrita
 function Mini({ label, value, tone = '', sub, span }) {
   return (
-    <div className={`${span ? 'col-span-2 ' : ''}rounded-xl border border-line/60 bg-head/60 px-3 py-2`}>
+    <div className={`${span ? 'col-span-2 ' : ''}rounded-xl border border-line/60 bg-head/60 px-3 py-2 transition-all duration-200 hover:border-line hover:bg-head/80 hover:-translate-y-px`}>
       <div className="text-muted text-[10px] font-bold uppercase tracking-[0.08em]">{label}</div>
       <div className={`num font-extrabold text-[15px] sm:text-lg leading-tight ${tone}`}>{value}</div>
       {sub && <div className="text-[10px] text-muted mt-0.5 truncate">{sub}</div>}
@@ -25,14 +25,14 @@ function Card({ cur, t, pct }) {
       </section>
     )
   return (
-    <section className="bento p-3">
+    <section className={`bento bento-gradient p-3 ${balance === 0 ? '' : pos ? 'glow-card-win' : 'glow-card-loss'}`}>
       <header className="flex items-center gap-2 mb-2.5">
         <span className={`pill ${cur === 'ARS' ? 'pill-cyan' : 'pill-gold'}`}>{cur}</span>
         <span className="text-muted text-xs font-semibold">{CUR_LABEL[cur]} · {t.count} jugadas</span>
         {pct > 0 && <span className="pill pill-gold ml-auto">Comisión {pct}% · <span className="num">{money(fee, cur)}</span></span>}
       </header>
       <div className="grid grid-cols-1 sm:grid-cols-[minmax(220px,0.9fr)_1.4fr] gap-2.5">
-        <div className={`rounded-xl border px-4 py-3 flex flex-col justify-center ${pos ? 'bg-win/10 border-win/50' : 'bg-loss/10 border-loss/50'}`}>
+        <div className={`rounded-xl border px-4 py-3 flex flex-col justify-center transition-all duration-300 ${pos ? 'bg-win/10 border-win/50 glow-box-win' : 'bg-loss/10 border-loss/50 glow-box-loss'}`}>
           <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink/80">Balance final a pagar</div>
           <div className={`num font-extrabold text-2xl sm:text-[28px] leading-tight ${pos ? 'text-win glow-win' : 'text-loss glow-loss'}`}>{money(balance, cur)}</div>
           <div className="text-[10px] text-muted">{balance === 0 ? '—' : pos ? `el cliente paga a ${BANCA}` : `${BANCA} paga al cliente`}</div>

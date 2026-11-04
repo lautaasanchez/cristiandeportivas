@@ -4,6 +4,7 @@ import {
   CURRENCIES, CUR_LABEL, comboLine, dayFromDate, isCombo, localISO, money, parseOdds, shortcutOf, toAmount, uid,
 } from '../lib/logic'
 import { MARKETS } from '../lib/sports'
+import { useExit } from '../lib/useExit'
 
 const blank = () => ({ evento: '', tipo: '', linea: '' })
 
@@ -23,6 +24,7 @@ const single = (text) => { const o = parseOdds(text); return o && o.parts === 1 
 export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, onClose }) {
   const editing = !!bet
   const box = useRef()
+  const { close, ov, card } = useExit(onClose)
   const [saved, setSaved] = useState(0) // jugadas cargadas seguidas con "guardar y cargar otra"
   const [modo, setModo] = useState(startsCombo(bet) ? 'combinada' : 'simple')
   const [sels, setSels] = useState(() => initialSels(bet))
@@ -66,12 +68,12 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
       setSels([blank(), blank()])
       setSaved((n) => n + 1)
       focusField('evento-0')
-    }
+    } else close()
   }
 
   // Enter guarda si está todo completo; si falta algo, salta al primer dato que falta
   const onEnter = (e) => {
-    if (e.key === 'Escape') return onClose()
+    if (e.key === 'Escape') return close()
     if (e.key !== 'Enter' || e.target.tagName === 'BUTTON') return
     e.preventDefault()
     if (ok) return save(e.ctrlKey || e.metaKey)
@@ -122,16 +124,16 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
   )
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 ${ov}`} onClick={close}>
       <div
         ref={box}
-        className="glass border rounded-2xl w-full max-w-md max-h-[94vh] overflow-y-auto p-5 space-y-3 shadow-2xl"
+        className={`glass border rounded-2xl w-full max-w-md max-h-[94vh] overflow-y-auto p-5 space-y-3 shadow-2xl ${card}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onEnter}
       >
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-extrabold">{editing ? 'Editar jugada' : 'Nueva jugada'}</h2>
-          <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
+          <button onClick={close} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <div className="grid grid-cols-2 rounded-xl border border-line p-1 gap-1 bg-head/60">
@@ -181,7 +183,7 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
         {saved > 0 && <div className="text-sm font-semibold text-win">✓ {saved === 1 ? 'Jugada guardada' : `${saved} jugadas guardadas`}. Cargá la siguiente.</div>}
 
         <div className="flex flex-wrap gap-2 pt-1 justify-end">
-          <button onClick={onClose} className="btn">{saved > 0 ? 'Listo' : 'Cancelar'}</button>
+          <button onClick={close} className="btn">{saved > 0 ? 'Listo' : 'Cancelar'}</button>
           {!editing && <button onClick={() => save(true)} disabled={!ok} className="btn" title="Atajo: Ctrl + Enter">Guardar y cargar otra</button>}
           <button onClick={() => save(false)} disabled={!ok} className="btn-primary" title="Atajo: Enter">{editing ? 'Guardar cambios' : 'Guardar'}</button>
         </div>

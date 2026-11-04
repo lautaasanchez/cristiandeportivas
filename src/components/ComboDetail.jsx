@@ -3,14 +3,16 @@ import { fmtFull, money, selections } from '../lib/logic'
 import { marketLabel } from '../lib/sports'
 import { googleUrl, openResults } from '../lib/web'
 import StatusPill from './StatusPill'
+import { useExit } from '../lib/useExit'
 
 // Detalle de una combinada: todas las selecciones, con búsqueda de cada equipo
 export default function ComboDetail({ bet, canEdit, onClose, onEditBet, onSearch, onEstado }) {
+  const { close, ov, card } = useExit(onClose)
   const legs = selections(bet)
   const cur = bet.moneda || 'ARS'
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3" onClick={onClose}>
-      <div className="glass border rounded-2xl w-full max-w-md p-5 space-y-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 ${ov}`} onClick={close}>
+      <div className={`glass border rounded-2xl w-full max-w-md p-5 space-y-3 shadow-2xl ${card}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-lg font-extrabold flex items-center gap-2">
@@ -19,7 +21,7 @@ export default function ComboDetail({ bet, canEdit, onClose, onEditBet, onSearch
             </h2>
             <p className="text-muted text-sm">{fmtFull(bet.fecha)} · <span className="num">{money(bet.monto, cur)}</span> · línea <span className="num">{bet.linea.toFixed(2)}</span></p>
           </div>
-          <button onClick={onClose} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
+          <button onClick={close} className="p-1 text-muted hover:text-ink" aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <ol className="space-y-1.5">
@@ -43,7 +45,7 @@ export default function ComboDetail({ bet, canEdit, onClose, onEditBet, onSearch
           <StatusPill disabled={!canEdit} value={bet.estado} onChange={onEstado} />
           <span className="ml-auto" />
           {canEdit && <button onClick={onEditBet} className="btn"><Pencil size={14} /> Editar</button>}
-          <button onClick={onClose} className="btn">Cerrar</button>
+          <button onClick={close} className="btn">Cerrar</button>
         </div>
       </div>
     </div>
