@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+# datos reales de las planillas: no se suben al repositorio
+datos-*.json
+apuestas-respaldo*.json
