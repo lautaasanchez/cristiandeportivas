@@ -38,6 +38,7 @@ function CloudPill({ cloud }) {
   )
 }
 
+const jugadas = (n) => (n === 1 ? '1 jugada' : `${n} jugadas`)
 const safe = (fn, fallback) => { try { return fn() } catch { return fallback } }
 
 export default function App() {
@@ -128,6 +129,7 @@ export default function App() {
       />
     )
 
+  const allCurrentBets = s.state.bets // jugadas de la semana actual (para saber si hay algo que no perder al restaurar)
   const oldest = history.length >= MAX_HISTORY ? history[history.length - 1] : null
 
   return (
@@ -137,6 +139,7 @@ export default function App() {
         view={s.view} onView={(v) => { s.setView(v); setOnlyPending(false) }}
         current={{ weekStart: s.state.weekStart, clients: s.state.clients, bets: s.state.bets, fees: s.state.fees }}
         history={history} notice={notice} onDismissNotice={s.dismissNotice} onExport={exportXLSX}
+        canEdit={canEdit} onRestore={(w) => setConfirm({ type: 'restore', week: w })} onDeleteWeek={(w) => setConfirm({ type: 'delweek', week: w })}
       />
 
       <div data-sticky-header className="wide:sticky wide:top-0 z-30 bg-bg/80 backdrop-blur-md">
@@ -257,13 +260,39 @@ export default function App() {
           title="¿Cerrar la semana y empezar una nueva?"
           text={
             `Se archivan las jugadas de todos los clientes de la semana del ${fmtFull(weekStart)} (quedan en “Últimas semanas”, donde se pueden seguir editando) y la planilla arranca vacía para la semana del ${fmtFull(addDays(weekStart, 7))}.` +
-            (oldest ? ` ⚠ Ya hay ${MAX_HISTORY} semanas guardadas: se eliminará automáticamente la semana del ${fmtFull(oldest.weekStart)}.` : '')
+            (oldest ? ` ⚠ Ya hay ${MAX_HISTORY} semanas guardadas: se eliminará automáticamente la semana del ${fmtFull(oldest.weekStart)}.` : '') +
+            ' Si te equivocás, la podés restaurar desde “Últimas semanas”.'
           }
           confirmLabel="Sí, cerrar semana"
           onCancel={() => setConfirm(null)}
           onConfirm={() => { s.newWeek(); setConfirm(null) }}
         />
       )}
+      {confirm?.type === 'delweek' && (
+        <ConfirmModal
+          title={`¿Eliminar la semana del ${fmtFull(confirm.week.weekStart)}?`}
+          text={`Se borra la semana con ${jugadas(Object.values(confirm.week.bets).flat().length)} para siempre y no se puede deshacer. Si querés conservarla, exportá el Excel antes.`}
+          confirmLabel="Eliminar semana"
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => { s.deleteWeek(confirm.week.id); setConfirm(null) }}
+        />
+      )}
+      {confirm?.type === 'restore' && (() => {
+        const hasData = Object.values(allCurrentBets).some((l) => l.length > 0)
+        const n = Object.values(allCurrentBets).flat().length
+        return (
+          <ConfirmModal
+            danger={false}
+            title={`¿Restaurar la semana del ${fmtFull(confirm.week.weekStart)} como semana actual?`}
+            text={hasData
+              ? `La semana actual (${fmtFull(s.state.weekStart)}, ${jugadas(n)}) no se pierde: pasa a “Últimas semanas”. Podés volver a restaurarla desde ahí.`
+              : `La semana actual (${fmtFull(s.state.weekStart)}) está vacía, así que se reemplaza por la que restaurás.`}
+            confirmLabel="Restaurar semana"
+            onCancel={() => setConfirm(null)}
+            onConfirm={() => { s.restoreWeek(confirm.week.id); setConfirm(null); setMenu(false) }}
+          />
+        )
+      })()}
       {confirm?.type === 'bet' && (
         <ConfirmModal
           title="¿Borrar esta jugada?"

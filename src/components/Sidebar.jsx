@@ -1,8 +1,8 @@
-import { CalendarDays, Cloud, FileSpreadsheet, History, LogOut, TriangleAlert, X } from 'lucide-react'
+import { CalendarDays, FileSpreadsheet, History, RotateCcw, Trash2, TriangleAlert, X } from 'lucide-react'
 import { CURRENCIES, addDays, fmtFull, money, weekSummary } from '../lib/logic'
 import { MAX_HISTORY } from '../lib/useStore'
 
-function WeekItem({ title, subtitle, active, week, onOpen, onExport }) {
+function WeekItem({ title, subtitle, active, week, onOpen, onExport, onRestore, onDelete }) {
   const sum = weekSummary(week)
   const used = CURRENCIES.filter((c) => sum[c].count)
   return (
@@ -20,14 +20,28 @@ function WeekItem({ title, subtitle, active, week, onOpen, onExport }) {
           {!used.length && <div className="text-xs text-muted">Sin jugadas</div>}
         </div>
       </button>
-      <div className="px-3 pb-2">
+      <div className="px-3 pb-2 space-y-1.5">
         <button onClick={onExport} className="btn !py-1 text-xs w-full justify-center"><FileSpreadsheet size={14} /> Exportar Excel</button>
+        {(onRestore || onDelete) && (
+          <div className="grid grid-cols-2 gap-1.5">
+            {onRestore && (
+              <button onClick={onRestore} className="btn !py-1 text-xs justify-center !text-cyan" title="Vuelve a ser la semana actual (por si archivaste sin querer)">
+                <RotateCcw size={13} /> Restaurar
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={onDelete} className="btn !py-1 text-xs justify-center !text-loss hover:!border-loss" title="Elimina esta semana para siempre">
+                <Trash2 size={13} /> Eliminar
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-export default function Sidebar({ open, onClose, view, onView, current, history, notice, onDismissNotice, onExport }) {
+export default function Sidebar({ open, onClose, view, onView, current, history, notice, onDismissNotice, onExport, canEdit, onRestore, onDeleteWeek }) {
   return (
     <>
       <div
@@ -74,6 +88,8 @@ export default function Sidebar({ open, onClose, view, onView, current, history,
                 active={view === w.id} week={w}
                 onOpen={() => { onView(w.id); onClose() }}
                 onExport={() => onExport(w)}
+                onRestore={canEdit ? () => onRestore(w) : undefined}
+                onDelete={canEdit ? () => onDeleteWeek(w) : undefined}
               />
             ))}
           </section>

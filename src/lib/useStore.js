@@ -147,6 +147,35 @@ export function useStore(externalUser) {
           ? s
           : { ...s, users: [...s.users, { id: uid(), name, perm }] }),
 
+    // Elimina una semana cerrada (para siempre)
+    deleteWeek: (id) => {
+      setState((s) => ({ ...s, history: s.history.filter((w) => w.id !== id) }))
+      if (view === id) setView('current')
+    },
+
+    // Deshace un "Semana nueva": la semana cerrada vuelve a ser la semana actual.
+    // Si la semana actual tiene jugadas, no se pierden: pasa a "Últimas semanas" en su lugar. Si está vacía, se reemplaza.
+    restoreWeek: (id) => {
+      setState((s) => {
+        const w = s.history.find((x) => x.id === id)
+        if (!w) return s
+        const currentHasData = Object.values(s.bets).some((l) => l.length > 0)
+        const parked = currentHasData
+          ? [{ id: uid(), weekStart: s.weekStart, closedAt: Date.now(), closedBy: userName, clients: s.clients, bets: s.bets, fees: s.fees }]
+          : []
+        const clients = [...new Set([...w.clients, ...s.clients])] // los clientes agregados después no se pierden
+        return {
+          ...s,
+          weekStart: w.weekStart,
+          clients,
+          bets: Object.fromEntries(clients.map((c) => [c, w.bets[c] || []])),
+          fees: { ...s.fees, ...w.fees },
+          history: [...parked, ...s.history.filter((x) => x.id !== id)].slice(0, MAX_HISTORY),
+        }
+      })
+      setView('current')
+    },
+
     // Archiva la semana actual; si ya hay 3 cerradas, la más antigua se borra sola y queda un aviso
     newWeek: () => {
       setState((s) => {
