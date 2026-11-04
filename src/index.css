@@ -18,6 +18,8 @@
   --win: 34 226 153; --loss: 251 63 94; --pend: 249 158 11;
 }
 
+html { scrollbar-gutter: stable; }
+
 body {
   @apply bg-bg text-ink font-sans text-sm antialiased;
   background-image:

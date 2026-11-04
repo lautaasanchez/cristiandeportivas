@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import {
   CURRENCIES, CUR_LABEL, comboLine, dayFromDate, isCombo, localISO, money, parseOdds, shortcutOf, toAmount, uid,
@@ -19,6 +19,34 @@ const initialSels = (bet) => {
 const startsCombo = (bet) => !!bet && (isCombo(bet) || (bet.lineaRaw && /x/i.test(bet.lineaRaw)))
 
 const single = (text) => { const o = parseOdds(text); return o && o.parts === 1 ? o.value : null }
+
+// Controles del formulario que se pueden enfocar, con su posición en pantalla
+const controlsOf = (root) =>
+  [...root.querySelectorAll('button, input, select')]
+    .filter((el) => !el.disabled && el.tabIndex !== -1 && el.type !== 'hidden' && el.getClientRects().length > 0)
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+
+const sameRow = (a, b) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) >= 0.5 * Math.min(a.height, b.height)
+
+// Siguiente control al mover con una flecha: ← → dentro de la misma fila; ↑ ↓ a la fila de arriba o abajo (el más cercano en horizontal)
+const nextControl = (root, from, key) => {
+  const all = controlsOf(root)
+  const cur = all.find((c) => c.el === from)
+  if (!cur) return null
+  const cx = cur.r.left + cur.r.width / 2
+  if (key === 'ArrowRight' || key === 'ArrowLeft') {
+    const row = all.filter((c) => c.el !== from && sameRow(c.r, cur.r))
+    const side = key === 'ArrowRight' ? row.filter((c) => c.r.left >= cur.r.right - 4) : row.filter((c) => c.r.right <= cur.r.left + 4)
+    side.sort((a, b) => (key === 'ArrowRight' ? a.r.left - b.r.left : b.r.right - a.r.right))
+    return side[0]?.el ?? null
+  }
+  const down = key === 'ArrowDown'
+  const cand = all.filter((c) => !sameRow(c.r, cur.r) && (down ? c.r.top >= cur.r.bottom - 4 : c.r.bottom <= cur.r.top + 4))
+  if (!cand.length) return null
+  cand.sort((a, b) => (down ? a.r.top - b.r.top : b.r.bottom - a.r.bottom))
+  const band = cand.filter((c) => sameRow(c.r, cand[0].r))
+  return band.reduce((best, c) => (Math.abs(c.r.left + c.r.width / 2 - cx) < Math.abs(best.r.left + best.r.width / 2 - cx) ? c : best), band[0]).el
+}
 
 // Sirve para "Nueva jugada" y, con `bet`, para "Editar jugada". Dos modos: Simple y Combinada.
 export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, onClose }) {
@@ -48,6 +76,24 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
     if (e.key === 'Tab' && !e.shiftKey && first) { e.preventDefault(); setSel(i, { evento: first }) }
   }
 
+  // Al abrir con Enter desde la planilla el foco seguía afuera y las flechas movían la pantalla de atrás.
+  // Ahora el foco entra al formulario (en "Editar", al primer equipo con el cursor al final) y, si se pierde
+  // (por ejemplo al tocar un espacio vacío), la primera flecha lo devuelve en vez de desplazar la página.
+  useEffect(() => {
+    const first = () => box.current?.querySelector('[data-f="evento-0"]')
+    if (editing) {
+      const el = first()
+      if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length) } catch { /* sin cursor */ } }
+    }
+    const rescue = (e) => {
+      if (!e.key.startsWith('Arrow') || !box.current || box.current.contains(document.activeElement)) return
+      e.preventDefault()
+      first()?.focus()
+    }
+    window.addEventListener('keydown', rescue, true)
+    return () => window.removeEventListener('keydown', rescue, true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const focusField = (name) => setTimeout(() => box.current?.querySelector(`[data-f="${name}"]`)?.focus(), 0)
 
   // again = guardar y dejar el formulario listo para la jugada siguiente (se conservan fecha, moneda, modo y cuota)
@@ -72,8 +118,37 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
   }
 
   // Enter guarda si está todo completo; si falta algo, salta al primer dato que falta
+  // Flechas: ↑ ↓ ← → pasan de un campo al de al lado. En un campo de texto, ← y → mueven el cursor y recién saltan
+  // cuando el cursor ya está en el borde; en la fecha, ← y → recorren día, mes y año.
+  const onArrows = (e) => {
+    const t = e.target
+    if (!box.current?.contains(t) || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false
+    const isText = t.tagName === 'INPUT' && !['date', 'checkbox', 'radio', 'button'].includes(t.type)
+    const isDate = t.tagName === 'INPUT' && t.type === 'date'
+    const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight'
+    if (horizontal && isDate) return false
+    if (horizontal && isText) {
+      const len = t.value.length
+      if (e.key === 'ArrowLeft' && !(t.selectionStart === 0 && t.selectionEnd === 0)) return false
+      if (e.key === 'ArrowRight' && !(t.selectionStart === len && t.selectionEnd === len)) return false
+    }
+    const next = nextControl(box.current, t, e.key)
+    if (next) {
+      e.preventDefault()
+      next.focus()
+      if (next.tagName === 'INPUT' && next.type !== 'date') { // el cursor queda del lado por el que se entra
+        const at = e.key === 'ArrowRight' ? 0 : next.value.length
+        try { next.setSelectionRange(at, at) } catch { /* algunos tipos no lo permiten */ }
+      }
+    } else if (!horizontal && (isText || isDate || t.tagName === 'SELECT')) {
+      e.preventDefault() // sin fila arriba/abajo: no cambiar el valor del campo sin querer
+    }
+    return true
+  }
+
   const onEnter = (e) => {
     if (e.key === 'Escape') return close()
+    if (e.key.startsWith('Arrow')) return onArrows(e)
     if (e.key !== 'Enter' || e.target.tagName === 'BUTTON') return
     e.preventDefault()
     if (ok) return save(e.ctrlKey || e.metaKey)
@@ -187,7 +262,7 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
           {!editing && <button onClick={() => save(true)} disabled={!ok} className="btn" title="Atajo: Ctrl + Enter">Guardar y cargar otra</button>}
           <button onClick={() => save(false)} disabled={!ok} className="btn-primary" title="Atajo: Enter">{editing ? 'Guardar cambios' : 'Guardar'}</button>
         </div>
-        <p className="text-[11px] text-muted">Enter guarda · Ctrl + Enter guarda y abre otra · Tab completa el equipo sugerido · Esc cierra</p>
+        <p className="text-[11px] text-muted">Enter guarda · Ctrl + Enter guarda y abre otra · ↑ ↓ ← → te mueven entre campos · Tab completa el equipo sugerido · Esc cierra</p>
       </div>
     </div>
   )
