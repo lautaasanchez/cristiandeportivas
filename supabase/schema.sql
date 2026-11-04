@@ -30,11 +30,15 @@ create table if not exists public.app_users (
   is_admin      boolean not null default false,
   wants_edit    boolean not null default false,   -- pidió poder editar
   must_change   boolean not null default false,   -- tiene una clave temporal y debe elegir una nueva
+  welcome_message text,                            -- mensaje que se muestra UNA vez al iniciar sesión (lo carga el dueño por SQL)
+  welcome_seen  boolean not null default false,
   fail_count    int not null default 0,
   locked_until  timestamptz,
   created_at    timestamptz not null default now()
 );
 alter table public.app_users add column if not exists must_change boolean not null default false;
+alter table public.app_users add column if not exists welcome_message text;
+alter table public.app_users add column if not exists welcome_seen boolean not null default false;
 
 create table if not exists public.app_sessions (
   token_hash  text primary key,
@@ -129,7 +133,7 @@ end;
 $$;
 
 create or replace function public.app_login(p_username text, p_password text, p_remember boolean)
-returns table (out_ok boolean, out_error text, out_token text, out_username text, out_display text, out_role text, out_admin boolean, out_wants boolean, out_must_change boolean)
+returns table (out_ok boolean, out_error text, out_token text, out_username text, out_display text, out_role text, out_admin boolean, out_wants boolean, out_must_change boolean, out_welcome text)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -142,11 +146,11 @@ begin
 
   if not found then
     perform pg_sleep(0.5);
-    return query select false, 'Usuario o contraseña incorrectos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean; return;
+    return query select false, 'Usuario o contraseña incorrectos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean, null::text; return;
   end if;
 
   if u.locked_until is not null and u.locked_until > now() then
-    return query select false, 'Demasiados intentos. Probá de nuevo en unos minutos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean; return;
+    return query select false, 'Demasiados intentos. Probá de nuevo en unos minutos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean, null::text; return;
   end if;
 
   if u.pass_hash <> crypt(coalesce(p_password, ''), u.pass_hash) then
@@ -155,11 +159,11 @@ begin
            locked_until = case when fail_count + 1 >= 5 then now() + interval '10 minutes' else null end
      where id = u.id;
     perform pg_sleep(0.5);
-    return query select false, 'Usuario o contraseña incorrectos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean; return;
+    return query select false, 'Usuario o contraseña incorrectos.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean, null::text; return;
   end if;
 
   if u.role = 'blocked' then
-    return query select false, 'Tu cuenta está bloqueada. Hablá con Cris o Vale.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean; return;
+    return query select false, 'Tu cuenta está bloqueada. Hablá con Cris o Vale.', null::text, null::text, null::text, null::text, null::boolean, null::boolean, null::boolean, null::text; return;
   end if;
 
   update public.app_users set fail_count = 0, locked_until = null where id = u.id;
@@ -170,7 +174,8 @@ begin
           now() + case when coalesce(p_remember, false) then interval '30 days' else interval '1 day' end);
   delete from public.app_sessions where expires_at < now();
 
-  return query select true, null::text, tok, u.username, u.display_name, u.role, u.is_admin, u.wants_edit, u.must_change;
+  return query select true, null::text, tok, u.username, u.display_name, u.role, u.is_admin, u.wants_edit, u.must_change,
+    case when u.welcome_message is not null and not u.welcome_seen then u.welcome_message else null end;
 end;
 $$;
 
@@ -195,6 +200,21 @@ security definer
 set search_path = public, extensions
 as $$
   delete from public.app_sessions where token_hash = encode(digest(coalesce(p_token, ''), 'sha256'), 'hex');
+$$;
+
+-- Marca como visto el mensaje de bienvenida: no vuelve a aparecer en ningún dispositivo
+create or replace function public.app_ack_welcome(p_token text)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare u public.app_users;
+begin
+  u := public._session_user(p_token);
+  if u.id is null then raise exception 'unauthorized'; end if;
+  update public.app_users set welcome_seen = true where id = u.id;
+end;
 $$;
 
 -- Cambiar la propia contraseña (también sirve para reemplazar una clave temporal)
@@ -395,6 +415,7 @@ revoke all on function public.app_login(text, text, boolean) from public;
 revoke all on function public.app_me(text) from public;
 revoke all on function public.app_logout(text) from public;
 revoke all on function public.app_change_password(text, text, text) from public;
+revoke all on function public.app_ack_welcome(text) from public;
 revoke all on function public.state_get(text) from public;
 revoke all on function public.state_set(text, jsonb, bigint) from public;
 revoke all on function public.admin_list(text) from public;
@@ -408,6 +429,7 @@ grant execute on function public.app_login(text, text, boolean) to anon;
 grant execute on function public.app_me(text) to anon;
 grant execute on function public.app_logout(text) to anon;
 grant execute on function public.app_change_password(text, text, text) to anon;
+grant execute on function public.app_ack_welcome(text) to anon;
 grant execute on function public.state_get(text) to anon;
 grant execute on function public.state_set(text, jsonb, bigint) to anon;
 grant execute on function public.admin_list(text) to anon;

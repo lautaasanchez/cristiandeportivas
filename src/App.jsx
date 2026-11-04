@@ -17,6 +17,7 @@ import Sidebar from './components/Sidebar'
 import AuthGate, { WaitingScreen } from './components/AuthGate'
 import AccountMenu from './components/AccountMenu'
 import { ForcePasswordScreen } from './components/ChangePassword'
+import WelcomeNote from './components/WelcomeNote'
 import FeeInput from './components/FeeInput'
 import SearchBar from './components/SearchBar'
 import ComboDetail from './components/ComboDetail'
@@ -134,6 +135,7 @@ export default function App() {
 
   return (
     <div>
+      {auth.enabled && auth.user?.welcome && <WelcomeNote text={auth.user.welcome} onDone={auth.ackWelcome} />}
       <Sidebar
         open={menu} onClose={() => setMenu(false)}
         view={s.view} onView={(v) => { s.setView(v); setOnlyPending(false) }}

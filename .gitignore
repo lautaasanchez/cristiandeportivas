@@ -6,3 +6,5 @@ dist
 # datos reales de las planillas: no se suben al repositorio
 datos-*.json
 apuestas-respaldo*.json
+# mensajes personales (SQL que se corre a mano en Supabase): no se suben
+bienvenida-*.sql

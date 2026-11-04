@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cloudConfigured, rpc } from './cloud'
 
 const TOKEN_KEY = 'apuestas-sesion'
@@ -18,6 +18,7 @@ export function useAuth() {
   })
   const [loading, setLoading] = useState(enabled && !!token)
   const [tempPass, setTempPass] = useState('') // clave temporal recién usada (solo en memoria) para poder cambiarla
+  const welcome = useRef(user?.welcome || null) // mensaje de bienvenida pendiente (solo llega al iniciar sesión)
 
   const clear = useCallback(() => {
     for (const s of [localStorage, sessionStorage]) { put(s, TOKEN_KEY, null); put(s, PROFILE_KEY, null) }
@@ -39,7 +40,7 @@ export function useAuth() {
         const row = (await rpc('app_me', { p_token: token }))[0]
         if (dead) return
         if (!row) { clear(); return }
-        const profile = toUser(row)
+        const profile = { ...toUser(row), welcome: welcome.current }
         setUser(profile); keep(profile)
       } catch { /* sin conexión: se sigue con el perfil guardado */ }
       finally { if (!dead) setLoading(false) }
@@ -53,7 +54,8 @@ export function useAuth() {
     try {
       const r = (await rpc('app_login', { p_username: username, p_password: password, p_remember: !!remember }))[0]
       if (!r?.out_ok) return { ok: false, error: r?.out_error || 'No se pudo iniciar sesión.' }
-      const profile = toUser(r)
+      const profile = { ...toUser(r), welcome: r.out_welcome || null }
+      welcome.current = profile.welcome
       const store = remember ? localStorage : sessionStorage
       for (const s of [localStorage, sessionStorage]) { put(s, TOKEN_KEY, null); put(s, PROFILE_KEY, null) }
       put(store, TOKEN_KEY, r.out_token); put(store, PROFILE_KEY, JSON.stringify(profile))
@@ -87,6 +89,14 @@ export function useAuth() {
     }
   }
 
+  // El cartel de bienvenida se muestra una sola vez: al confirmarlo se marca como visto en el servidor
+  const ackWelcome = async () => {
+    welcome.current = null
+    const profile = { ...user, welcome: null }
+    setUser(profile); keep(profile)
+    try { await rpc('app_ack_welcome', { p_token: token }) } catch { /* sin conexión: se avisará de nuevo la próxima vez */ }
+  }
+
   const logout = async () => {
     try { if (token) await rpc('app_logout', { p_token: token }) } catch {}
     clear()
@@ -97,7 +107,7 @@ export function useAuth() {
 
   return {
     enabled, token, user, loading,
-    login, register, logout, changePassword, tempPass,
+    login, register, logout, changePassword, tempPass, ackWelcome,
     expire: clear, // la sesión venció o fue revocada
     storeUser: user ? { id: user.username, name: user.displayName, perm: user.role === 'edit' ? 'edit' : 'read' } : null,
   }
