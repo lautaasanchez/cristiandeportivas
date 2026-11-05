@@ -1,5 +1,5 @@
 import { CalendarDays, FileSpreadsheet, History, RotateCcw, Trash2, TriangleAlert, X } from 'lucide-react'
-import { CURRENCIES, addDays, fmtFull, money, weekSummary } from '../lib/logic'
+import { CURRENCIES, addDays, diffLabel, fmtFull, money, weekSummary } from '../lib/logic'
 import { MAX_HISTORY } from '../lib/useStore'
 
 function WeekItem({ title, subtitle, active, week, onOpen, onExport, onRestore, onDelete }) {
@@ -12,9 +12,9 @@ function WeekItem({ title, subtitle, active, week, onOpen, onExport, onRestore, 
         <div className="text-[11px] text-muted">{subtitle}</div>
         <div className="mt-1 space-y-0.5">
           {used.map((c) => (
-            <div key={c} className="flex justify-between text-xs">
-              <span className="text-muted">{c} · balance final</span>
-              <span className={`num font-bold ${sum[c].balance >= 0 ? 'text-win' : 'text-loss'}`}>{money(sum[c].balance, c)}</span>
+            <div key={c} className="flex justify-between gap-2 text-xs">
+              <span className="text-muted">{c} · {diffLabel(sum[c].played - sum[c].won).toLowerCase()}</span>
+              <span className={`num font-bold shrink-0 ${sum[c].played - sum[c].won > 0 ? 'text-win' : sum[c].played - sum[c].won < 0 ? 'text-loss' : 'text-muted'}`}>{money(sum[c].played - sum[c].won, c)}</span>
             </div>
           ))}
           {!used.length && <div className="text-xs text-muted">Sin jugadas</div>}

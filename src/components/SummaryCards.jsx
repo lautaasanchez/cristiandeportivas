@@ -1,4 +1,4 @@
-import { BANCA, CUR_LABEL, balanceOf, feeOf, money } from '../lib/logic'
+import { CUR_LABEL, diffLabel, feeOf, money } from '../lib/logic'
 
 // Mini tarjeta interna: etiqueta chica, monto en monoespaciado y negrita
 function Mini({ label, value, tone = '', sub, span }) {
@@ -13,8 +13,7 @@ function Mini({ label, value, tone = '', sub, span }) {
 
 function Card({ cur, t, pct }) {
   const fee = feeOf(t.played, pct)
-  const balance = balanceOf(t, pct)
-  const pos = balance >= 0
+  const diff = t.played - t.won
   // Moneda sin jugadas: tarjeta de una sola línea (ahorra lugar en pantallas chicas)
   if (t.count === 0)
     return (
@@ -24,23 +23,20 @@ function Card({ cur, t, pct }) {
         <span className="num font-bold text-sm ml-auto text-muted">{money(0, cur)}</span>
       </section>
     )
+  const tone = diff > 0 ? 'win' : diff < 0 ? 'loss' : null
   return (
-    <section className={`bento bento-gradient p-3 ${balance === 0 ? '' : pos ? 'glow-card-win' : 'glow-card-loss'}`}>
+    <section className={`bento bento-gradient p-3 ${tone === 'win' ? 'glow-card-win' : tone === 'loss' ? 'glow-card-loss' : ''}`}>
       <header className="flex items-center gap-2 mb-2.5">
         <span className={`pill ${cur === 'ARS' ? 'pill-cyan' : 'pill-gold'}`}>{cur}</span>
         <span className="text-muted text-xs font-semibold">{CUR_LABEL[cur]} · {t.count} jugadas</span>
         {pct > 0 && <span className="pill pill-gold ml-auto">Comisión {pct}% · <span className="num">{money(fee, cur)}</span></span>}
       </header>
-      <div className="grid grid-cols-1 sm:grid-cols-[minmax(220px,0.9fr)_1.4fr] gap-2.5">
-        <div className={`rounded-xl border px-4 py-3 flex flex-col justify-center transition-all duration-300 ${pos ? 'bg-win/10 border-win/50 glow-box-win' : 'bg-loss/10 border-loss/50 glow-box-loss'}`}>
-          <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink/80">Balance final a pagar</div>
-          <div className={`num font-extrabold text-2xl sm:text-[28px] leading-tight ${pos ? 'text-win glow-win' : 'text-loss glow-loss'}`}>{money(balance, cur)}</div>
-          <div className="text-[10px] text-muted">{balance === 0 ? '—' : pos ? `el cliente paga a ${BANCA}` : `${BANCA} paga al cliente`}</div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Mini span label="Total apostado" value={money(t.played, cur)} />
-          <Mini label="Total perdido" value={money(-t.lost, cur)} tone={t.lost < 0 ? 'text-win' : 'text-muted'} sub="el cliente perdió" />
-          <Mini label="Total ganado" value={money(-t.won, cur)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} sub="el cliente ganó" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Mini label="Total apostado" value={money(t.played, cur)} />
+        <Mini label="Ganó el cliente" value={money(t.won, cur)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
+        <div className={`rounded-xl border px-3 py-2 transition-all duration-300 ${tone === 'win' ? 'bg-win/10 border-win/50 glow-box-win' : tone === 'loss' ? 'bg-loss/10 border-loss/50 glow-box-loss' : 'bg-head/60 border-line/60'}`}>
+          <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink/80">{diffLabel(diff)}</div>
+          <div className={`num font-extrabold text-[15px] sm:text-xl leading-tight ${tone === 'win' ? 'text-win glow-win' : tone === 'loss' ? 'text-loss glow-loss' : 'text-muted'}`}>{money(diff, cur)}</div>
         </div>
       </div>
     </section>

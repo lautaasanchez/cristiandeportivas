@@ -53,6 +53,8 @@ export const totalsByCur = (bets) =>
   Object.fromEntries(CURRENCIES.map((c) => [c, totals(bets.filter((b) => (b.moneda || 'ARS') === c))]))
 
 // Comisión del cliente: % sobre lo apostado. Balance final = Diferencia − comisión (igual que H2 de la planilla)
+// Diferencia = total apostado − lo que ganó el cliente. Positiva: a favor de la banca (Cristian). Negativa: a favor del cliente.
+export const diffLabel = (d) => (d > 0 ? `Diferencia a favor de ${BANCA}` : d < 0 ? 'Diferencia a favor del cliente' : 'Diferencia')
 export const feeOf = (played, pct) => (played * (Number(pct) || 0)) / 100
 export const balanceOf = (t, pct) => t.diff - feeOf(t.played, pct)
 
@@ -60,10 +62,11 @@ export const balanceOf = (t, pct) => t.diff - feeOf(t.played, pct)
 export const weekSummary = (week) =>
   Object.fromEntries(
     CURRENCIES.map((cur) => {
-      const acc = { played: 0, diff: 0, balance: 0, count: 0 }
+      const acc = { played: 0, won: 0, diff: 0, balance: 0, count: 0 }
       week.clients.forEach((c) => {
         const t = totals((week.bets[c] || []).filter((b) => (b.moneda || 'ARS') === cur))
         acc.played += t.played
+        acc.won += t.won
         acc.diff += t.diff
         acc.balance += balanceOf(t, (week.fees || {})[c])
         acc.count += t.count

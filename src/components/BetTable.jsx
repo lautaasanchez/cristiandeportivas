@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
-  BANCA, CURRENCIES, DAYS, addDays, balanceOf, dayFromDate, fmtDate, fmtFull, houseNet, isCombo, money, parseOdds, payout, selections, shortcutOf, toAmount, totals,
+  BANCA, CURRENCIES, DAYS, addDays, dayFromDate, diffLabel, fmtDate, fmtFull, houseNet, isCombo, money, parseOdds, payout, selections, shortcutOf, toAmount, totals,
 } from '../lib/logic'
 import { marketLabel } from '../lib/sports'
 import StatusPill from './StatusPill'
@@ -113,14 +113,12 @@ function BetCards({ bets, weekStart, pct, canEdit, sel, setSel, onEdit, onOpenEd
               const sub = list.filter((b) => (b.moneda || 'ARS') === c)
               if (!sub.length) return null
               const t = totals(sub)
-              const bal = balanceOf(t, pct)
               return (
                 <div key={c} className="bento-flat px-3 py-2 text-xs flex flex-wrap items-baseline gap-x-4 gap-y-1">
                   <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
                   <Chip label="Apostado" value={money(t.played, c)} tone="" />
-                  <Chip label="Perdido" value={money(-t.lost, c)} tone={t.lost < 0 ? 'text-win' : 'text-muted'} />
-                  <Chip label="Ganado" value={money(-t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
-                  <Chip label="Balance" value={money(bal, c)} tone={col(bal)} />
+                  <Chip label="Ganó el cliente" value={money(t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
+                  <Chip label={diffLabel(t.played - t.won)} value={money(t.played - t.won, c)} tone={col(t.played - t.won)} />
                 </div>
               )
             })}
@@ -360,16 +358,14 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                 const sub = list.filter((b) => (b.moneda || 'ARS') === c)
                 if (!sub.length) return null
                 const t = totals(sub)
-                const bal = balanceOf(t, pct)
                 return (
                   <tr key={c} className="bg-head/50">
                     <td colSpan={11} className={`${td} px-3 py-1 text-xs`}>
                       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-0.5 justify-end">
                         <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
                         <Chip label="Total apostado" value={money(t.played, c)} tone="" />
-                        <Chip label="Perdido" value={money(-t.lost, c)} tone={t.lost < 0 ? 'text-win' : 'text-muted'} />
-                        <Chip label="Ganado" value={money(-t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
-                        <Chip label="Balance final" value={money(bal, c)} tone={col(bal)} />
+                        <Chip label="Ganó el cliente" value={money(t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
+                        <Chip label={diffLabel(t.played - t.won)} value={money(t.played - t.won, c)} tone={col(t.played - t.won)} />
                       </div>
                     </td>
                   </tr>

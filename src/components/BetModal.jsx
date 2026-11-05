@@ -96,7 +96,7 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
 
   const focusField = (name) => setTimeout(() => box.current?.querySelector(`[data-f="${name}"]`)?.focus(), 0)
 
-  // again = guardar y dejar el formulario listo para la jugada siguiente (se conservan fecha, moneda, modo y cuota)
+  // again = guardar y dejar el formulario listo para la jugada siguiente (se conservan fecha, moneda y modo; la cuota vuelve a cero)
   const save = (again = false) => {
     if (!ok) return
     const list = active.map((s, i) => ({ evento: canon(s.evento) || s.evento.trim().toUpperCase(), tipo: s.tipo, linea: lines[i] }))
@@ -112,6 +112,7 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
     }, { again: again && !editing })
     if (again && !editing) {
       setSels([blank(), blank()])
+      setF((x) => ({ ...x, cuota: '' }))
       setSaved((n) => n + 1)
       focusField('evento-0')
     } else close()
@@ -159,12 +160,20 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
     if (iLn >= 0) return focusField(`linea-${iLn}`)
   }
 
+  const cuotaField = (
+    <label className="block font-semibold">
+            Cuota (monto jugado) {f.moneda === 'USD' && <span className="text-muted font-normal">· dólares, valor directo</span>}
+            <input inputMode="decimal" className="field num mt-1" placeholder="Ej: 100" value={f.cuota} data-f="cuota" onChange={set('cuota')} />
+            <span className="num text-win text-sm">(Equivale a {money(monto, f.moneda)})</span>
+          </label>
+  )
+
   const row = (s, i) => (
     <div key={i} className="rounded-xl border border-line p-2.5 space-y-2 bg-surface/50">
       <div className="flex items-center gap-2">
         {combo && <span className="text-xs font-extrabold text-gold w-5">{i + 1}</span>}
         <input
-          className="field !py-1.5" placeholder={combo ? 'Equipo / evento' : 'Ej: INSTITUTO'} value={s.evento} data-f={`evento-${i}`}
+          className="field !py-1.5" placeholder={combo ? 'Equipo / evento' : 'Ej: ROSARIO CENTRAL'} value={s.evento} data-f={`evento-${i}`}
           autoFocus={!editing && i === 0}
           onChange={(e) => setSel(i, { evento: e.target.value })} onKeyDown={tab(i)}
         />
@@ -189,6 +198,7 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
           </div>
         )
       })()}
+      {!combo && cuotaField}
       <div className="grid grid-cols-[1fr_96px] gap-2">
         <select className="field !py-1.5 !text-sm" value={s.tipo} onChange={(e) => setSel(i, { tipo: e.target.value })}>
           {MARKETS.map((m) => <option key={m.id} value={m.id}>{m.id ? m.label : 'Tipo de jugada'}</option>)}
@@ -236,14 +246,9 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
           Fecha <span className="text-muted font-normal">({dayFromDate(f.fecha)})</span>
           <input type="date" className="field mt-1" value={f.fecha} onChange={set('fecha')} />
         </label>
-        <label className="block font-semibold">
-          Cuota (monto jugado) {f.moneda === 'USD' && <span className="text-muted font-normal">· dólares, valor directo</span>}
-          <input inputMode="decimal" className="field num mt-1" placeholder="Ej: 100" value={f.cuota} data-f="cuota" onChange={set('cuota')} />
-          <span className="num text-win text-sm">(Equivale a {money(monto, f.moneda)})</span>
-        </label>
 
         <div className="space-y-2">
-          <div className="font-semibold">{combo ? 'Selecciones de la combinada' : 'Evento, tipo y línea'}</div>
+          <div className="font-semibold">{combo ? 'Selecciones de la combinada' : 'Evento, cuota, tipo y línea'}</div>
           {active.map(row)}
           {combo && (
             <button onClick={() => setSels((l) => [...l, blank()])} className="btn w-full justify-center !text-cyan"><Plus size={16} /> Agregar selección</button>
@@ -254,6 +259,9 @@ export default function BetModal({ bet, initialDate, suggestAll, canon, onSave, 
             </div>
           )}
         </div>
+
+
+        {combo && cuotaField}
 
         {saved > 0 && <div className="text-sm font-semibold text-win">✓ {saved === 1 ? 'Jugada guardada' : `${saved} jugadas guardadas`}. Cargá la siguiente.</div>}
 
