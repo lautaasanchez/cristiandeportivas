@@ -117,8 +117,8 @@ function BetCards({ bets, weekStart, pct, canEdit, sel, setSel, onEdit, onOpenEd
                 <div key={c} className="bento-flat px-3 py-2 text-xs flex flex-wrap items-baseline gap-x-4 gap-y-1">
                   <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
                   <Chip label="Apostado" value={money(t.played, c)} tone="" />
-                  <Chip label="Ganó el cliente" value={money(t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
-                  <Chip label={diffLabel(t.played - t.won)} value={money(t.played - t.won, c)} tone={col(t.played - t.won)} />
+                  <Chip label="Ganó el cliente" value={money(t.returned, c)} tone={t.returned > 0 ? 'text-loss' : 'text-muted'} />
+                  <Chip label={diffLabel(t.played - t.returned)} value={money(t.played - t.returned, c)} tone={col(t.played - t.returned)} />
                 </div>
               )
             })}
@@ -364,8 +364,8 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-0.5 justify-end">
                         <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
                         <Chip label="Total apostado" value={money(t.played, c)} tone="" />
-                        <Chip label="Ganó el cliente" value={money(t.won, c)} tone={t.won > 0 ? 'text-loss' : 'text-muted'} />
-                        <Chip label={diffLabel(t.played - t.won)} value={money(t.played - t.won, c)} tone={col(t.played - t.won)} />
+                        <Chip label="Ganó el cliente" value={money(t.returned, c)} tone={t.returned > 0 ? 'text-loss' : 'text-muted'} />
+                        <Chip label={diffLabel(t.played - t.returned)} value={money(t.played - t.returned, c)} tone={col(t.played - t.returned)} />
                       </div>
                     </td>
                   </tr>

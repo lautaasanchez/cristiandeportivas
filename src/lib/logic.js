@@ -62,11 +62,12 @@ export const balanceOf = (t, pct) => t.diff - feeOf(t.played, pct)
 export const weekSummary = (week) =>
   Object.fromEntries(
     CURRENCIES.map((cur) => {
-      const acc = { played: 0, won: 0, diff: 0, balance: 0, count: 0 }
+      const acc = { played: 0, won: 0, returned: 0, diff: 0, balance: 0, count: 0 }
       week.clients.forEach((c) => {
         const t = totals((week.bets[c] || []).filter((b) => (b.moneda || 'ARS') === cur))
         acc.played += t.played
         acc.won += t.won
+        acc.returned += t.returned
         acc.diff += t.diff
         acc.balance += balanceOf(t, (week.fees || {})[c])
         acc.count += t.count

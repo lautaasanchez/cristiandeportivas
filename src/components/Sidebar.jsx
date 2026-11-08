@@ -13,8 +13,8 @@ function WeekItem({ title, subtitle, active, week, onOpen, onExport, onRestore, 
         <div className="mt-1 space-y-0.5">
           {used.map((c) => (
             <div key={c} className="flex justify-between gap-2 text-xs">
-              <span className="text-muted">{c} · {diffLabel(sum[c].played - sum[c].won).toLowerCase()}</span>
-              <span className={`num font-bold shrink-0 ${sum[c].played - sum[c].won > 0 ? 'text-win' : sum[c].played - sum[c].won < 0 ? 'text-loss' : 'text-muted'}`}>{money(sum[c].played - sum[c].won, c)}</span>
+              <span className="text-muted">{c} · {diffLabel(sum[c].played - sum[c].returned).toLowerCase()}</span>
+              <span className={`num font-bold shrink-0 ${sum[c].played - sum[c].returned > 0 ? 'text-win' : sum[c].played - sum[c].returned < 0 ? 'text-loss' : 'text-muted'}`}>{money(sum[c].played - sum[c].returned, c)}</span>
             </div>
           ))}
           {!used.length && <div className="text-xs text-muted">Sin jugadas</div>}
