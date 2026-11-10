@@ -1,4 +1,4 @@
-import { CUR_LABEL, diffLabel, feeOf, money } from '../lib/logic'
+import { CUR_LABEL, apostadoNeto, diffLabel, feeOf, money } from '../lib/logic'
 
 // Mini tarjeta interna: etiqueta chica, monto en monoespaciado y negrita
 function Mini({ label, value, tone = '', sub, span }) {
@@ -13,7 +13,8 @@ function Mini({ label, value, tone = '', sub, span }) {
 
 function Card({ cur, t, pct }) {
   const fee = feeOf(t.played, pct)
-  const diff = t.played - t.returned
+  const neto = apostadoNeto(t, pct)
+  const diff = neto - t.returned
   // Moneda sin jugadas: tarjeta de una sola línea (ahorra lugar en pantallas chicas)
   if (t.count === 0)
     return (
@@ -32,7 +33,7 @@ function Card({ cur, t, pct }) {
         {pct > 0 && <span className="pill pill-gold ml-auto">Comisión {pct}% · <span className="num">{money(fee, cur)}</span></span>}
       </header>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Mini label="Total apostado" value={money(t.played, cur)} />
+        <Mini label="Total apostado" value={money(neto, cur)} />
         <Mini label="Ganó el cliente" value={money(t.returned, cur)} tone={t.returned > 0 ? 'text-loss' : 'text-muted'} />
         <div className={`rounded-xl border px-3 py-2 transition-all duration-300 ${tone === 'win' ? 'bg-win/10 border-win/50 glow-box-win' : tone === 'loss' ? 'bg-loss/10 border-loss/50 glow-box-loss' : 'bg-head/60 border-line/60'}`}>
           <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink/80">{diffLabel(diff)}</div>

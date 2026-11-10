@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
-  BANCA, CURRENCIES, DAYS, addDays, dayFromDate, diffLabel, fmtDate, fmtFull, houseNet, isCombo, money, parseOdds, payout, selections, shortcutOf, toAmount, totals,
+  BANCA, CURRENCIES, DAYS, addDays, apostadoNeto, dayFromDate, diffLabel, fmtDate, fmtFull, houseNet, isCombo, money, parseOdds, payout, selections, shortcutOf, toAmount, totals,
 } from '../lib/logic'
 import { marketLabel } from '../lib/sports'
 import StatusPill from './StatusPill'
@@ -116,9 +116,9 @@ function BetCards({ bets, weekStart, pct, canEdit, sel, setSel, onEdit, onOpenEd
               return (
                 <div key={c} className="bento-flat px-3 py-2 text-xs flex flex-wrap items-baseline gap-x-4 gap-y-1">
                   <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
-                  <Chip label="Apostado" value={money(t.played, c)} tone="" />
+                  <Chip label="Apostado" value={money(apostadoNeto(t, pct), c)} tone="" />
                   <Chip label="Ganó el cliente" value={money(t.returned, c)} tone={t.returned > 0 ? 'text-loss' : 'text-muted'} />
-                  <Chip label={diffLabel(t.played - t.returned)} value={money(t.played - t.returned, c)} tone={col(t.played - t.returned)} />
+                  <Chip label={diffLabel(apostadoNeto(t, pct) - t.returned)} value={money(apostadoNeto(t, pct) - t.returned, c)} tone={col(apostadoNeto(t, pct) - t.returned)} />
                 </div>
               )
             })}
@@ -363,9 +363,9 @@ export default function BetTable({ bets, weekStart, pct, canEdit, suggest, enabl
                     <td colSpan={11} className={`${td} px-3 py-1 text-xs`}>
                       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-0.5 justify-end">
                         <span className="font-bold text-muted mr-auto">Subtotal {d} · {c}</span>
-                        <Chip label="Total apostado" value={money(t.played, c)} tone="" />
+                        <Chip label="Total apostado" value={money(apostadoNeto(t, pct), c)} tone="" />
                         <Chip label="Ganó el cliente" value={money(t.returned, c)} tone={t.returned > 0 ? 'text-loss' : 'text-muted'} />
-                        <Chip label={diffLabel(t.played - t.returned)} value={money(t.played - t.returned, c)} tone={col(t.played - t.returned)} />
+                        <Chip label={diffLabel(apostadoNeto(t, pct) - t.returned)} value={money(apostadoNeto(t, pct) - t.returned, c)} tone={col(apostadoNeto(t, pct) - t.returned)} />
                       </div>
                     </td>
                   </tr>

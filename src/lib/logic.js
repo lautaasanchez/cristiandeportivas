@@ -56,18 +56,21 @@ export const totalsByCur = (bets) =>
 // Diferencia = total apostado − lo que ganó el cliente. Positiva: a favor de la banca (Cristian). Negativa: a favor del cliente.
 export const diffLabel = (d) => (d > 0 ? `Diferencia a favor de ${BANCA}` : d < 0 ? 'Diferencia a favor del cliente' : 'Diferencia')
 export const feeOf = (played, pct) => (played * (Number(pct) || 0)) / 100
+// Total apostado neto = apostado menos la comisión del cliente
+export const apostadoNeto = (t, pct) => t.played - feeOf(t.played, pct)
 export const balanceOf = (t, pct) => t.diff - feeOf(t.played, pct)
 
 // Resumen de una semana completa (todos los clientes, cada uno con su comisión)
 export const weekSummary = (week) =>
   Object.fromEntries(
     CURRENCIES.map((cur) => {
-      const acc = { played: 0, won: 0, returned: 0, diff: 0, balance: 0, count: 0 }
+      const acc = { played: 0, won: 0, returned: 0, neto: 0, diff: 0, balance: 0, count: 0 }
       week.clients.forEach((c) => {
         const t = totals((week.bets[c] || []).filter((b) => (b.moneda || 'ARS') === cur))
         acc.played += t.played
         acc.won += t.won
         acc.returned += t.returned
+        acc.neto += apostadoNeto(t, (week.fees || {})[c])
         acc.diff += t.diff
         acc.balance += balanceOf(t, (week.fees || {})[c])
         acc.count += t.count
